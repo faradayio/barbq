@@ -17,6 +17,11 @@ class Token:
         self.text = text
         self.category = category
 
+# commonly used KEYWORD, OPERATOR, and SPECIAL tokens
+AS = Token("AS", C.KEYWORD)
+LP = Token("(", C.SPECIAL) # left-parenthesis
+RP = Token(")", C.SPECIAL) # right-parenthesis
+
 class SQL:
     def render(self) -> str:
         return sqlparse.format(self._delex(self._serialize()))
@@ -69,11 +74,6 @@ class Join:
     pass
 class Select:
     pass
-class CTE:
-    self._cte_name: 
-
-    def _serialize(self):
-        return [Token(cte.AS, C.IDENTIFIER), Token("AS", C.KEYWORD), Token("(", C.SPECIAL)] + query._serialize() + [Token(")", C.SPECIAL)]
 class Where:
     pass
 class GroupBy:
@@ -94,48 +94,41 @@ class From: # from (interpolated)
     def __serialize(self) -> List[Token]:
         pass
 
-    # TODO START HERE the from nt has a lot of cases, it's a good time to take some time
-    # to think about rules / conventions for translating from CFG to python objects
-    # I also want to give my subconscious some time to decide what to do with aliases,
-    # and to make sure I am not leading users into conceptual pitfalls in the way I
-    # am setting up constructors. I need to clarify some design principles re CFG translation.
-    
-    # What variance do we allow in translation to support dialect ergonomics?
-
-    # The other pressure on the formalism, both how we translate and how we render, is
-    # the need to present reasonable options for composing queries as objects. There are two
-    # canonical workflows that I want to support here:
-    # 1. write megaquery->copy out chunks to named-objects/generator-func calls
-    # 2. I am lazy->I want to reuse existing chunks and easily write SQL around them
-
-    # this is normally not too bad, but the poor ergonomics of SQL bring it to light sometimes
-    # as I've first seen when dealing with aliasing in with clauses. This is where I need to start
-    # developing in parallel with someone translating, or preferably even multiple people
     def __init__(self):
         pass
 class With(SQL): # with (interpolated)
-    _ctes: List[CTE]
+    _queries: List["Query"]
 
     def __serialize(self) -> List[Token]:
         return [Token("WITH", C.KEYWORD)] + self._sep([cte._serialize() for cte in self._ctes], Token(",", C.SPECIAL))
 
     def __init__(self, queries: List["Query"]):
         for query in queries:
-            assert query.AS is not None, "Each query in a with clause needs an alias"
-        self._ctes = queries
+            assert not (query._pre_alias is None and query._post_alias is None), "Each query in a with clause needs an alias"
+            if query._post_alias:
+                query._pre_alias = query._post_alias
+                query._post_alias = None
+        self._queries = queries
 class Query(SQL): # query_expr
     _with: Optional[With]
     _operation: Union[Select, "Query", SetOperation]
     _order_by: Optional[OrderBy]
     _limit: Optional[Limit]
-    AS: Optional[str] # publicly accessible, both for use by __serialize called on
-            # an object that contains a Query or by the user 
+    _pre_alias: Optional[str]
+    _post_alias: Optional[str]
 
+    # syntactic sugar for changing or setting alias
     def AS(self, alias: str) -> None:
-        self.AS = alias
+        self._post_alias = alias
 
     def __serialize(self) -> List[Token]:
-        return self._chain(self._with, self._operation, self._order_by, self._limit)
+        query = self._chain(self._with, self._operation, self._order_by, self._limit)
+        assert self._pre_alias is None or self._post_alias is None, "Cannot have 2 aliases for 1 query. It should be impossible to get this error without directly modifying private fields"
+        if self._pre_alias:
+            return [Token(self._pre_alias, C.IDENTIFIER), AS, LP] + query + [RP]
+        if self._post_alias:
+            return query + [AS, Token(self._post_alias, C.IDENTIFIER)]
+        return query
 
     # we always accept the type of the field, as well as any types
     # that can be reasonably interpreted as that type
@@ -155,6 +148,7 @@ class Query(SQL): # query_expr
         # these two actually belong to a query in the grammar
         ORDER_BY: Optional[OrderBy] = None,
         LIMIT: Optional[Limit] = None,
+        AS: Optional[str] = None,
         # the rest of the join types go here to avoid cluttering the tooltip
     ):
         # _with
@@ -166,6 +160,14 @@ class Query(SQL): # query_expr
             case With() as raw:
                 self._with = raw
         
+        # _operation (only select for now)
+        match SELECT:
+            case (str() | [Col()]) as arg:
+                self._operation = Select(arg, from_)
+            case Select() as select:
+                # TODO we should probably override any fields from the passed select if they are also set in the query constructor
+                self._operation = select
+
         # select args
         match FROM:
             case None:
@@ -175,13 +177,9 @@ class Query(SQL): # query_expr
             case From() as from__:
                 from_ = from__
 
-        # _operation (only select for now)
-        match SELECT:
-            case (str() | [Col()]) as arg:
-                self._operation = Select(arg, from_)
-            case Select() as select:
-                # TODO we should probably override any fields from the passed select if they are also set in the query constructor
-                self._operation = select
+
+        # aliases
+
 
         # unimplemented (class body = pass)
         self._order_by = OrderBy.raw(ORDER_BY) if ORDER_BY else None
