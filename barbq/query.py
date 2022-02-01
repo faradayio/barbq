@@ -53,19 +53,18 @@ class SQL:
 
     @classmethod
     def _delex(cls, token: Token) -> str:
-        match token.category:
-            case C.KEYWORD:
-                return token.text
-            case C.SPECIAL:
-                return token.text
-            case C.RAW:
-                return token.text
-            case C.OPERATOR:
-                return token.text
-            case C.LITERAL:
-                return f"'{token.text}'"
-            case C.IDENTIFIER:
-                return "".join([f"`{path_component}`" for path_component in token.text.split(".")])
+        if token.category == C.KEYWORD:
+            return token.text
+        if token.category == C.SPECIAL:
+            return token.text
+        if token.category == C.RAW:
+            return token.text
+        if token.category == C.OPERATOR:
+            return token.text
+        if token.category == C.LITERAL:
+            return f"'{token.text}'"
+        if token.category == C.IDENTIFIER:
+            return "".join([f"`{path_component}`" for path_component in token.text.split(".")])
 
 
     @abstractmethod
@@ -144,11 +143,10 @@ class Select(SQL):
         return [Token("SELECT", C.KEYWORD)] + self._sep([col._serialize() for col in self._cols], COMMA)
 
     def __init__(self, cols: Union[List[Col], str]):
-        match cols:
-            case [Col()] as cs:
-                self._cols = cs
-            case str as text:
-                self._cols = [Col(text)]
+        if isinstance(cols, List[Col]):
+            self._cols = cols
+        elif isinstance(cols, str):
+            self._cols = [Col(cols)]
 class With(SQL): # with (interpolated)
     _queries: List["Query"]
 
@@ -220,7 +218,7 @@ class Query(SQL): # query_expr
         SELECT: Union[str, List[Col], Select] = "*",
         # these all technically belong to select
         FROM: Optional[Union[str, "Query", From]] = None,
-        JOIN: Optional[Join] = None, # will be supported with something like the signature below in a (near-)future release
+        JOIN: Optional[Tuple[Union[Table, "Query"], Union[On, Using]]] = None, # will be supported with something like the signature below in a (near-)future release
         # JOIN: Optional[Union[str, Tuple[Union[str, "Query"], JoinCondition], Join]] = None,
         WHERE: Optional[Where] = None,
         GROUP_BY: Optional[GroupBy] = None,
@@ -234,31 +232,32 @@ class Query(SQL): # query_expr
         # the rest of the join types go here to avoid cluttering the tooltip
     ):
         # _with
-        match WITH:
-            case None:
-                pass
-            case [Query()] as queries:
-                self._with = With(queries)
-            case With() as raw:
-                self._with = raw
+        if WITH is None:
+            self._with = None
+        elif isinstance(WITH, List["Query"]):
+            self._with = With(WITH)
+        elif isinstance(WITH, With):
+            self._with = WITH
         
         # _operation (only select for now)
-        match SELECT:
-            case (str() | [Col()]) as arg:
-                self._operation = Select(arg)
-            case Select() as select:
-                self._operation = select
+        if isinstance(SELECT, str) or isinstance(SELECT, List[Col]):
+            self._operation = Select(SELECT)
+        elif isinstance(SELECT, Select):
+            self._operation = SELECT
 
         # _from
-        match FROM:
-            case None:
-                self._from = From() # TODO should maybe make raw() smarter and then raise here
-            case (str() | Query()):
-                self._from = From(FROM)
-            case From():
-                self._from = FROM
+        if FROM is None:
+            self._from = From() # TODO should maybe make raw() smarter and then raise here
+        elif isinstance(FROM, str) or isinstance(FROM, Query):
+            self._from = From(FROM)
+        elif isinstance(FROM, From):
+            self._from = FROM
 
         # _join
+        if JOIN is None:
+            self._join = None
+        else:
+            self._join = Join(JOIN)
 
         # _select args (raw only)
         self._where = WHERE
