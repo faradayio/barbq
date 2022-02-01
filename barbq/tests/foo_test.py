@@ -10,10 +10,11 @@ class TestQuery(TestCase):
             ],
             FROM=Table("acceptance-237317.kirby.grandmothers"),
         )
+        print(basic_query.render())
         expected = """
 SELECT
-    grannies.name AS who,specialty,grannies.hobby
-FROM acceptance-237317.kirby.grandmothers AS grannies"""
+    grannies.name,specialty,grannies.hobby
+FROM acceptance-237317.kirby.grandmothers"""
         assert basic_query.render() == expected
 
     def test_omniquery(self):
@@ -43,7 +44,7 @@ FROM acceptance-237317.kirby.grandmothers AS grannies"""
                         Col("mary_score"),
                     ],
                     FROM=grandmothers.AS("grannies"),
-                    JOIN=(Table("summary_scores"), On("summary_scores.name=grannies.name")),
+                    JOIN=(Table("summary_scores"), On.raw("summary_scores.name=grannies.name")),
                     AS="scored_grandmas",
                 ),
                 Query.raw(
@@ -62,4 +63,4 @@ FROM acceptance-237317.kirby.grandmothers AS grannies"""
             """,
         )
         print(omniquery.render())
-        assert True
+        assert False
