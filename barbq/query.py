@@ -21,10 +21,11 @@ class Token:
 AS = Token("AS", C.KEYWORD)
 LP = Token("(", C.SPECIAL) # left-parenthesis
 RP = Token(")", C.SPECIAL) # right-parenthesis
+COMMA = Token(",", C.SPECIAL)
 
 class SQL:
     def render(self) -> str:
-        return sqlparse.format(self._delex(self._serialize()))
+        return sqlparse.format(" ".join([self._delex(token) for token in self._serialize()]))
 
     @classmethod
     def raw(cls, text: str):
@@ -40,15 +41,32 @@ class SQL:
         return result
 
     @classmethod
-    def _chain(components: List["SQL"]) -> List[Token]:
+    def _chain(cls, components: List["SQL"]) -> List[Token]:
         result = []
         for sql in components:
             result.extend(sql._serialize())
         return result
 
     @classmethod
-    def _delex(cls, tokens: List[Token]) -> str:
-        pass # TODO
+    def _table_or_query(cls, relation: Union["Table", "Query"]) -> List[Token]: # this probably shouldn't live here
+        return relation._serialize() if isinstance(relation, Table) else [LP] + relation._serialize() + [RP]
+
+    @classmethod
+    def _delex(cls, token: Token) -> str:
+        match token.category:
+            case C.KEYWORD:
+                return token.text
+            case C.SPECIAL:
+                return token.text
+            case C.RAW:
+                return token.text
+            case C.OPERATOR:
+                return token.text
+            case C.LITERAL:
+                return f"'{token.text}'"
+            case C.IDENTIFIER:
+                return "".join([f"`{path_component}`" for path_component in token.text.split(".")])
+
 
     @abstractmethod
     def __serialize(self) -> List[Token]:
@@ -58,49 +76,84 @@ class SQL:
         return [self._raw] if self._raw else self.__serialize()
 
 
-class Col:
+class SetOperation(SQL):
     pass
-class Select:
+class OrderBy(SQL):
     pass
-class SetOperation:
+class Limit(SQL):
     pass
-class OrderBy:
+class Where(SQL):
     pass
-class Limit:
+class GroupBy(SQL):
     pass
-class JoinCondition:
+class Having(SQL):
     pass
-class Join:
+class Qualify(SQL):
     pass
-class Select:
+class Window(SQL):
     pass
-class Where:
+class FromClause(SQL):
     pass
-class GroupBy:
+class Struct(SQL):
     pass
-class Having:
+class Value(SQL):
     pass
-class Qualify:
+class SelectMode(SQL):
     pass
-class Window:
+class Using(SQL):
     pass
-class FromClause:
+class On(SQL):
     pass
-# anything interpolated is only added so users can pass these objects around
-# for lesser used features, interpolated nonterminals will probably not be created
-class From: # from (interpolated)
-    _from_clauses: List[FromClause]
+class Col(SQL):
+    _text: str
 
     def __serialize(self) -> List[Token]:
-        pass
+        return [Token(self._text, C.IDENTIFIER)]
 
-    def __init__(self):
-        pass
+    def __init__(self, text: str):
+        self._text = text
+class Table(SQL): # yes, I know this is identical to Col for now
+    _text: str
+    def __serialize(self) -> List[Token]:
+        return [Token(self._text, C.IDENTIFIER)]
+    def __init__(self, text: str):
+        self._text = text
+class Join(SQL):
+    _from_item: Union[Table, "Query"]
+    _join_condition: Union[On, Using]
+
+    def __serialize(self) -> List[Token]:
+        return [Token("JOIN", C.KEYWORD)] + self._table_or_query(self._from_item) + self._join_condition._serialize()
+
+    def __init__(self, args: Tuple[Union[Table, "Query"], Union[On, Using]]):
+        self._from_item, self._join_condition = args
+class From(SQL): # from (interpolated)
+    _source: Union[Table, "Query"] # only 1 FromClause is supported right now
+
+    def __serialize(self) -> List[Token]:
+        return [Token("FROM", C.KEYWORD)] + self._table_or_query(self._source)
+
+    def __init__(self, arg: Union[Table, "Query"]):
+        self._source = arg
+class Select(SQL):
+    _nt1: Optional[Union[Struct, Value]]
+    _nt2: Optional[SelectMode]
+    _cols: List[Col] # this is provisional
+
+    def __serialize(self) -> List[Token]:
+        return [Token("SELECT", C.KEYWORD)] + self._sep([col._serialize() for col in self._cols], COMMA)
+
+    def __init__(self, cols: Union[List[Col], str]):
+        match cols:
+            case [Col()] as cs:
+                self._cols = cs
+            case str as text:
+                self._cols = [Col(text)]
 class With(SQL): # with (interpolated)
     _queries: List["Query"]
 
     def __serialize(self) -> List[Token]:
-        return [Token("WITH", C.KEYWORD)] + self._sep([cte._serialize() for cte in self._ctes], Token(",", C.SPECIAL))
+        return [Token("WITH", C.KEYWORD)] + self._sep([cte._serialize() for cte in self._ctes], COMMA)
 
     def __init__(self, queries: List["Query"]):
         for query in queries:
@@ -109,9 +162,27 @@ class With(SQL): # with (interpolated)
                 query._pre_alias = query._post_alias
                 query._post_alias = None
         self._queries = queries
+# select:
+#     SELECT [ AS { STRUCT | VALUE } ] [{ ALL | DISTINCT }]
+#         { [ expression. ]* [ EXCEPT ( column_name [, ...] ) ]
+#             [ REPLACE ( expression [ AS ] column_name [, ...] ) ]
+#         | expression [ [ AS ] alias ] } [, ...]
+#     [ FROM from_clause[, ...] ]
+#     [ WHERE bool_expression ]
+#     [ GROUP BY { expression [, ...] | ROLLUP ( expression [, ...] ) } ]
+#     [ HAVING bool_expression ]
+#     [ QUALIFY bool_expression ]
+#     [ WINDOW window_clause ]
+# TODO document Col and Join CFG changes
 class Query(SQL): # query_expr
     _with: Optional[With]
     _operation: Union[Select, "Query", SetOperation]
+    _from: From
+    _join: Optional[Join]
+    _where: Optional[Where]
+    _group_by: Optional[GroupBy]
+    _having: Optional[Having]
+    _qualify: Optional[Qualify]
     _order_by: Optional[OrderBy]
     _limit: Optional[Limit]
     _pre_alias: Optional[str]
@@ -122,7 +193,18 @@ class Query(SQL): # query_expr
         self._post_alias = alias
 
     def __serialize(self) -> List[Token]:
-        query = self._chain(self._with, self._operation, self._order_by, self._limit)
+        query = self._chain(
+            self._with,
+            self._operation,
+            self._from,
+            self._join,
+            self._where,
+            self._group_by,
+            self._having,
+            self._qualify,
+            self._order_by,
+            self._limit
+        )
         assert self._pre_alias is None or self._post_alias is None, "Cannot have 2 aliases for 1 query. It should be impossible to get this error without directly modifying private fields"
         if self._pre_alias:
             return [Token(self._pre_alias, C.IDENTIFIER), AS, LP] + query + [RP]
@@ -163,24 +245,31 @@ class Query(SQL): # query_expr
         # _operation (only select for now)
         match SELECT:
             case (str() | [Col()]) as arg:
-                self._operation = Select(arg, from_)
+                self._operation = Select(arg)
             case Select() as select:
-                # TODO we should probably override any fields from the passed select if they are also set in the query constructor
                 self._operation = select
 
-        # select args
+        # _from
         match FROM:
             case None:
-                from_ = From() # TODO should maybe make raw() smarter and then raise here
-            case (str() | Query()) as arg:
-                from_ = From(arg)
-            case From() as from__:
-                from_ = from__
+                self._from = From() # TODO should maybe make raw() smarter and then raise here
+            case (str() | Query()):
+                self._from = From(FROM)
+            case From():
+                self._from = FROM
 
+        # _join
+
+        # _select args (raw only)
+        self._where = WHERE
+        self._group_by = GROUP_BY
+        self._having = HAVING
+        self._qualify = QUALIFY
+        self._window = WINDOW
 
         # aliases
+        self._post_alias = AS
 
-
-        # unimplemented (class body = pass)
+        # query args (raw only)
         self._order_by = OrderBy.raw(ORDER_BY) if ORDER_BY else None
         self._limit = Limit.raw(LIMIT) if LIMIT else None
