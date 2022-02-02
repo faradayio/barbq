@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from re import L
 import sqlparse
 from typing import List, Optional, Tuple, Union
 from enum import Enum, auto
@@ -25,6 +26,9 @@ COMMA = Token(",", C.SPECIAL)
 class SQL:
     def __init__(self):
         self._raw = None
+
+    def __str__(self) -> str:
+        return self.render()
 
     def render(self) -> str:
         return sqlparse.format(" ".join([self._delex(token) for token in self._serialize()]))
@@ -83,6 +87,17 @@ class SQL:
     def _serialize(self) -> List[Token]:
         return [Token(self._raw, C.RAW)] if self._raw else self._serialize_()
 
+# to support interpolating other SQL objects into expressions, which we otherwise
+# don't parse yet, SQL will override __str__ to shadow render
+class Exp(SQL):
+    _expression: str
+
+    def _serialize_(self) -> List[Token]:
+        return [Token(self._expression, C.RAW)]
+    
+    def __init__(self, expression: str):
+        super().__init__()
+        self._expression = expression # TODO add some basic validation here
 
 class SetOperation(SQL):
     pass
@@ -113,7 +128,7 @@ class Using(SQL):
 class On(SQL):
     pass
 class Col(SQL):
-    _text: str
+    _text: Union[str, Exp]
     _alias: Optional[str]
 
     # syntactic sugar for changing or setting alias
@@ -122,9 +137,9 @@ class Col(SQL):
         return self
 
     def _serialize_(self) -> List[Token]:
-        return [Token(self._text, C.IDENTIFIER)] + ([AS, Token(self._alias, C.IDENTIFIER)] if self._alias else [])
+        return ([Token(self._text, C.IDENTIFIER)] if isinstance(self._text, str) else self._text._serialize()) + ([AS, Token(self._alias, C.IDENTIFIER)] if self._alias else [])
 
-    def __init__(self, text: str, AS: Optional[str] = None):
+    def __init__(self, text: Union[str, Exp], AS: Optional[str] = None):
         super().__init__()
         self._text = text
         self._alias = AS

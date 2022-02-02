@@ -1,5 +1,5 @@
 from unittest import TestCase
-from barbq.query import Col, On, Query, Table, Where
+from barbq.query import Col, Exp, On, Query, Table, Where
 class TestQuery(TestCase):
     def test_minimal_query(self):
         basic_query = Query(
@@ -60,3 +60,9 @@ class TestQuery(TestCase):
         expected = """WITH `scored_grandmas` AS ( WITH `summary_scores` AS ( SELECT `name` , CAST(hilda AS float64) + CAST(cookies AS float64) + CAST(knitting AS float64) AS hilda_score , CAST(mary AS float64) + CAST(bread as float64) + CAST(hockey AS float64) AS mary_score FROM `acceptance-237317`.`kirby`.`grandmothers` AS `grannies` ) SELECT `grannies`.`name` AS `name` , `hilda_score` , `mary_score` FROM `acceptance-237317`.`kirby`.`grandmothers` AS `grannies` JOIN `summary_scores` ON summary_scores.name=grannies.name ) , combos AS (SELECT * FROM scored_grandmas CROSS JOIN `acceptance-237317`.`kirby`.`ref_scores`) SELECT `brand` , `name` AS `granny` , relevance_score * mary_score AS score FROM `combos` WHERE granny='mary' -- for brands that care about similarity to mary, show how much they are interested in each of our grandmothers"""
         print(expected)
         assert omniquery.render() == expected
+
+    def test_exp(self):
+        assert Col(Exp("APPROX_QUANTILES(column, 100)")).render() == "APPROX_QUANTILES(column, 100)"
+
+    def test_interpolation(self):
+        assert f"{Col('column')}" == "`column`"
