@@ -66,3 +66,24 @@ class TestQuery(TestCase):
 
     def test_interpolation(self):
         assert f"{Col('column')}" == "`column`"
+
+    def test_initialize_from_using_str(self):
+        pass
+
+    def test_using(self):
+        pass
+
+    def test_on(self):
+        pass
+
+    def test_where(self):
+        pass
+
+    def test_group_by(self):
+        pass
+
+    def test_integer_literal_token(self):
+        pass
+
+    def test_limit(self):
+        pass

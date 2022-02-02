@@ -13,12 +13,14 @@ class C(Enum):
     RAW = auto()
 
 class Token:
-    def __init__(self, text: str, category: C):
-        self.text = text
+    def __init__(self, data: Union[str, int], category: C):
+        assert isinstance(data, str) or category == C.LITERAL, "nonliteral tokens cannot have nonstring type"
+        self.data = data
         self.category = category
 
 # commonly used KEYWORD, OPERATOR, and SPECIAL tokens
 AS = Token("AS", C.KEYWORD)
+BY = Token("BY", C.KEYWORD)
 LP = Token("(", C.SPECIAL) # left-parenthesis
 RP = Token(")", C.SPECIAL) # right-parenthesis
 COMMA = Token(",", C.SPECIAL)
@@ -70,17 +72,20 @@ class SQL:
     @classmethod
     def _delex(cls, token: Token) -> str:
         if token.category == C.KEYWORD:
-            return token.text
+            return token.data
         if token.category == C.SPECIAL:
-            return token.text
+            return token.data
         if token.category == C.RAW:
-            return token.text
+            return token.data
         if token.category == C.OPERATOR:
-            return token.text
-        if token.category == C.LITERAL:
-            return f"'{token.text}'"
+            return token.data
+        if token.category == C.LITERAL: # TODO more supported literal types to come
+            if isinstance(token.data, int):
+                return str(token.data)
+            else:
+                return f"'{token.data}'"
         if token.category == C.IDENTIFIER:
-            return ".".join([f"`{path_component}`" for path_component in token.text.split(".")])
+            return ".".join([f"`{path_component}`" for path_component in token.data.split(".")])
 
     def _serialize_(self) -> List[Token]:
         pass
@@ -101,14 +106,6 @@ class Exp(SQL):
 
 class SetOperation(SQL):
     pass
-class OrderBy(SQL):
-    pass
-class Limit(SQL):
-    pass
-class Where(SQL):
-    pass
-class GroupBy(SQL):
-    pass
 class Having(SQL):
     pass
 class Qualify(SQL):
@@ -122,10 +119,6 @@ class Struct(SQL):
 class Value(SQL):
     pass
 class SelectMode(SQL):
-    pass
-class Using(SQL):
-    pass
-class On(SQL):
     pass
 class Col(SQL):
     _text: Union[str, Exp]
@@ -143,6 +136,59 @@ class Col(SQL):
         super().__init__()
         self._text = text
         self._alias = AS
+
+class OrderBy(SQL):
+    _col: Col
+
+    def _serialize_(self) -> List[Token]:
+        return [Token("ORDER", C.KEYWORD), BY] + self._col._serialize()
+    
+    def __init__(self, col: Col):
+        self._col = col
+class Limit(SQL):
+    _limit: int
+
+    def _serialize_(self) -> List[Token]:
+        return [Token("LIMIT", C.KEYWORD), Token(self._limit, C.LITERAL)]
+    
+    def __init__(self, limit: int):
+        self._limit = limit
+class Using(SQL):
+    _col: Col
+
+    def _serialize_(self) -> List[Token]:
+        return [Token("USING", C.KEYWORD)] + self._col._serialize()
+
+    def __init__(self, col: Col):
+        self._col = Col
+
+class On(SQL):
+    _col1: Col
+    _col2: Col
+
+    def _serialize_(self) -> List[Token]:
+        return [Token("ON", C.KEYWORD)] + self._col1._serialize() + [Token("=", C.OPERATOR)] + self._col2._serialize()
+    
+    def __init__(self, col1: Col, col2: Col):
+        self._col1 = col1
+        self._col2 = col2
+
+class Where(SQL):
+    _exp: Exp
+
+    def _serialize_(self) -> List[Token]:
+        return [Token("WHERE", C.KEYWORD)] + self._exp._serialize()
+
+    def __init__(self, exp: Exp):
+        self._exp = exp
+class GroupBy(SQL):
+    _col: Col
+
+    def _serialize_(self) -> List[Token]:
+        return [Token("GROUP", C.KEYWORD), Token("BY", C.KEYWORD)] + self._col._serialize()
+    
+    def __init__(self, col: Col):
+        self._col = col
 class Table(SQL): # yes, I know this is identical to Col for now
     _text: str
     _alias: Optional[str]
@@ -175,9 +221,12 @@ class From(SQL): # from (interpolated)
     def _serialize_(self) -> List[Token]:
         return [Token("FROM", C.KEYWORD)] + self._table_or_query(self._source)
 
-    def __init__(self, arg: Union[Table, "Query"]):
+    def __init__(self, arg: Union[str, Table, "Query"]):
         super().__init__()
-        self._source = arg
+        if isinstance(arg, str):
+            self._source = Table(arg)
+        else:
+            self._source = arg
 class Select(SQL):
     _nt1: Optional[Union[Struct, Value]]
     _nt2: Optional[SelectMode]
@@ -253,7 +302,7 @@ class Query(SQL): # query_expr
         WITH: Optional[Union[List["Query"], With]] = None,
         SELECT: Union[str, List[Col], Select] = "*",
         # these all technically belong to select
-        FROM: Optional[Union[Table, "Query", From]] = None,
+        FROM: Optional[Union[str, Table, "Query", From]] = None,
         JOIN: Optional[Tuple[Union[Table, "Query"], Union[On, Using]]] = None, # will be supported with something like the signature below in a (near-)future release
         # JOIN: Optional[Union[str, Tuple[Union[str, "Query"], JoinCondition], Join]] = None,
         WHERE: Optional[Where] = None,
@@ -285,7 +334,7 @@ class Query(SQL): # query_expr
         # _from
         if FROM is None:
             self._from = From(Table.raw(""))
-        elif isinstance(FROM, Table) or isinstance(FROM, Query):
+        elif isinstance(FROM, Table) or isinstance(FROM, Query) or isinstance(FROM, str):
             self._from = From(FROM)
         elif isinstance(FROM, From):
             self._from = FROM
@@ -296,7 +345,7 @@ class Query(SQL): # query_expr
         else:
             self._join = Join(JOIN)
 
-        # _select args (raw only)
+        # _select args
         self._where = WHERE
         self._group_by = GROUP_BY
         self._having = HAVING
@@ -307,6 +356,6 @@ class Query(SQL): # query_expr
         self._pre_alias = None
         self._post_alias = AS
 
-        # query args (raw only)
+        # query args
         self._order_by = OrderBy.raw(ORDER_BY) if ORDER_BY else None
         self._limit = Limit.raw(LIMIT) if LIMIT else None
