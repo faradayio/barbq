@@ -87,3 +87,6 @@ class TestQuery(TestCase):
 
     def test_limit(self):
         pass
+
+    def test_star_col(self):
+        pass

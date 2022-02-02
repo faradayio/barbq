@@ -130,7 +130,7 @@ class Col(SQL):
         return self
 
     def _serialize_(self) -> List[Token]:
-        return ([Token(self._text, C.IDENTIFIER)] if isinstance(self._text, str) else self._text._serialize()) + ([AS, Token(self._alias, C.IDENTIFIER)] if self._alias else [])
+        return ([Token(self._text, C.SPECIAL) if self._text == "*" else Token(self._text, C.IDENTIFIER)] if isinstance(self._text, str) else self._text._serialize()) + ([AS, Token(self._alias, C.IDENTIFIER)] if self._alias else [])
 
     def __init__(self, text: Union[str, Exp], AS: Optional[str] = None):
         super().__init__()
