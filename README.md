@@ -38,3 +38,5 @@ to be exported to supporting-but-linked docs
 
 1. write megaquery->copy out chunks to named-objects/generator-func calls
 2. I am lazy->I want to reuse existing chunks and easily write SQL around them
+
+barbq objects are immutable, but support non-inplace mutations using functions named after the constructor keyword args
