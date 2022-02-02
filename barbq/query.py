@@ -1,4 +1,3 @@
-from abc import abstractmethod
 from re import L
 import sqlparse
 from typing import List, Optional, Tuple, Union
@@ -24,7 +23,8 @@ BY = Token("BY", C.KEYWORD)
 LP = Token("(", C.SPECIAL) # left-parenthesis
 RP = Token(")", C.SPECIAL) # right-parenthesis
 COMMA = Token(",", C.SPECIAL)
-
+ASC = Token("ASC", C.KEYWORD)
+DESC = Token("DESC", C.KEYWORD)
 class SQL:
     def __init__(self):
         self._raw = None
@@ -139,12 +139,20 @@ class Col(SQL):
 
 class OrderBy(SQL):
     _col: Col
+    _order: Optional[Token]
 
     def _serialize_(self) -> List[Token]:
         return [Token("ORDER", C.KEYWORD), BY] + self._col._serialize()
     
-    def __init__(self, col: Col):
+    def __init__(self, col: Col, order: Optional[Token] = None):
+        #ORDER_BY=Col()
+        #ORDER_BY=(
+        #   Col(),
+        #   DESC
+        # )
         self._col = col
+        assert order is None or order.data == "ASC" or order.data == "DESC"
+        self._order = order
 class Limit(SQL):
     _limit: int
 
@@ -306,12 +314,12 @@ class Query(SQL): # query_expr
         JOIN: Optional[Tuple[Union[Table, "Query"], Union[On, Using]]] = None, # will be supported with something like the signature below in a (near-)future release
         # JOIN: Optional[Union[str, Tuple[Union[str, "Query"], JoinCondition], Join]] = None,
         WHERE: Optional[Where] = None,
-        GROUP_BY: Optional[GroupBy] = None,
+        GROUP_BY: Optional[Union[Col, GroupBy]] = None,
         HAVING: Optional[Having] = None,
         QUALIFY: Optional[Qualify] = None,
         WINDOW: Optional[Window] = None,
         # these two actually belong to a query in the grammar
-        ORDER_BY: Optional[OrderBy] = None,
+        ORDER_BY: Optional[Union[OrderBy, Col, Tuple[Col, Token]]] = None,
         LIMIT: Optional[Limit] = None,
         AS: Optional[str] = None,
         # the rest of the join types go here to avoid cluttering the tooltip
@@ -359,3 +367,8 @@ class Query(SQL): # query_expr
         # query args
         self._order_by = OrderBy.raw(ORDER_BY) if ORDER_BY else None
         self._limit = Limit.raw(LIMIT) if LIMIT else None
+
+#TODO
+# isinstance checks for newly supported parameters
+# tests for new parameters
+# more literal delexing 

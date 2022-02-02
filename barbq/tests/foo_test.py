@@ -1,5 +1,5 @@
 from unittest import TestCase
-from barbq.query import Col, Exp, On, Query, Table, Where
+from barbq.query import Col, Exp, On, OrderBy, Query, Table, Where
 class TestQuery(TestCase):
     def test_minimal_query(self):
         basic_query = Query(
@@ -14,7 +14,7 @@ class TestQuery(TestCase):
         expected = """SELECT `grannies`.`name` , `specialty` , `grannies`.`hobby` FROM `acceptance-237317`.`kirby`.`grandmothers` AS `grannies`"""
         assert basic_query.render() == expected
 
-    def test_omniquery(self):
+    def test_omniquery(self): # integration test
         ref_scores = Table("acceptance-237317.kirby.ref_scores")
         grandmothers = Table("acceptance-237317.kirby.grandmothers").AS("grannies")
         omniquery = Query(
@@ -89,4 +89,10 @@ class TestQuery(TestCase):
         pass
 
     def test_star_col(self):
+        pass
+
+    def test_order_by(self):
+        pass
+
+    def test_order_by_with_sort(self):
         pass
