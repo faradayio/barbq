@@ -1,6 +1,11 @@
+from ast import Or
+import pstats
 from re import L
+from shutil import register_unpack_format
+from tkinter.messagebox import NO
+from numpy import isin
 import sqlparse
-from typing import List, Optional, Tuple, Union
+from typing import Any, List, Optional, Tuple, Union
 from enum import Enum, auto
 
 class C(Enum):
@@ -13,6 +18,7 @@ class C(Enum):
 
 class Token:
     def __init__(self, data: Union[str, int], category: C):
+        print(data, type(data))
         assert isinstance(data, str) or category == C.LITERAL, "nonliteral tokens cannot have nonstring type"
         self.data = data
         self.category = category
@@ -25,6 +31,16 @@ RP = Token(")", C.SPECIAL) # right-parenthesis
 COMMA = Token(",", C.SPECIAL)
 ASC = Token("ASC", C.KEYWORD)
 DESC = Token("DESC", C.KEYWORD)
+OR = Token("OR", C.KEYWORD)
+AND = Token("AND", C.KEYWORD)
+
+# new table
+CREATE = Token("CREATE", C.KEYWORD)
+CREATE_TEMP = Token("CREATE_TEMP", C.KEYWORD)
+CREATE_OR_REPLACE = Token("CREATE OR REPLACE", C.KEYWORD)
+CREATE_OR_REPLACE_TEMP = Token("CREATE OR REPLACE TEMP", C.KEYWORD)
+IF_NOT_EXISTS = Token("IF NOT EXISTS", C.KEYWORD)
+
 class SQL:
     def __init__(self):
         self._raw = None
@@ -70,22 +86,47 @@ class SQL:
         return relation._serialize() if isinstance(relation, Table) else [LP] + relation._serialize() + [RP]
 
     @classmethod
+    def _delex_root(cls, data: Any) -> str:
+        if isinstance(data, str):
+            return f"'{data}'"
+        elif isinstance(data, bool):
+            return str(data).lower()
+        elif isinstance(data, list):
+            return ", ".join([cls._delex_root(x) for x in data])
+        elif isinstance(data, tuple):
+            return ", ".join([cls._delex_root(x) for x in data])
+        else:
+            raise Exception(f"unknown conversion for type: {type(data)}")
+
+    @classmethod
     def _delex(cls, token: Token) -> str:
         if token.category == C.KEYWORD:
             return token.data
-        if token.category == C.SPECIAL:
+        elif token.category == C.SPECIAL:
             return token.data
-        if token.category == C.RAW:
+        elif token.category == C.RAW:
             return token.data
-        if token.category == C.OPERATOR:
+        elif token.category == C.OPERATOR:
             return token.data
-        if token.category == C.LITERAL: # TODO more supported literal types to come
+        elif token.category == C.LITERAL: # TODO more supported literal types to come
             if isinstance(token.data, int):
                 return str(token.data)
+            elif isinstance(token.data, float):
+                return str(token.data)
+            elif isinstance(token.data, list):
+                return cls._delex_root(token.data)
+            elif isinstance(token.data, tuple):
+                return cls._delex_root(token.data)
+            elif isinstance(token.data, dict):
+                return cls._delex_root(token.data.values())
+            elif isinstance(token.data, bool):
+                return str(token.data).lower()
             else:
                 return f"'{token.data}'"
-        if token.category == C.IDENTIFIER:
+        elif token.category == C.IDENTIFIER:
             return ".".join([f"`{path_component}`" for path_component in token.data.split(".")])
+        else:
+            raise Exception(f"unknown conversion for type: {type(token.data)}")
 
     def _serialize_(self) -> List[Token]:
         pass
@@ -95,14 +136,35 @@ class SQL:
 # to support interpolating other SQL objects into expressions, which we otherwise
 # don't parse yet, SQL will override __str__ to shadow render
 class Exp(SQL):
-    _expression: str
-
+    _expression: Union[str, Tuple["Exp", Token, "Exp"]]
+    
     def _serialize_(self) -> List[Token]:
-        return [Token(self._expression, C.RAW)]
+        if isinstance(self._expression, str):
+            return [Token(self._expression, C.RAW)]
+        else:
+            return [LP] + self._expression[0]._serialize() + [self._expression[1]] + self._expression[2]._serialize() + [RP]
     
     def __init__(self, expression: str):
         super().__init__()
         self._expression = expression # TODO add some basic validation here
+
+    def AND(self, exp: Union[str, "Exp"]) -> "Exp": # add column as potential input
+        result_exp = Exp("")
+        result_exp._expression = (
+            self,
+            AND,
+            exp if isinstance(exp, "Exp") else Exp(exp)
+        )
+        return result_exp
+
+    def OR(self, exp: Union[str, "Exp"]) -> "Exp": # add column as potential input
+        result_exp = Exp("")
+        result_exp._expression = (
+            self,
+            OR,
+            exp if isinstance(exp, "Exp") else Exp(exp)
+        )
+        return result_exp
 
 class SetOperation(SQL):
     pass
@@ -142,14 +204,13 @@ class OrderBy(SQL):
     _order: Optional[Token]
 
     def _serialize_(self) -> List[Token]:
-        return [Token("ORDER", C.KEYWORD), BY] + self._col._serialize()
+        result = [Token("ORDER", C.KEYWORD), BY] + self._col._serialize()
+        if self._order:
+            result += [self._order]
+        return result
     
     def __init__(self, col: Col, order: Optional[Token] = None):
-        #ORDER_BY=Col()
-        #ORDER_BY=(
-        #   Col(),
-        #   DESC
-        # )
+        super().__init__()
         self._col = col
         assert order is None or order.data == "ASC" or order.data == "DESC"
         self._order = order
@@ -188,6 +249,7 @@ class Where(SQL):
         return [Token("WHERE", C.KEYWORD)] + self._exp._serialize()
 
     def __init__(self, exp: Exp):
+        super().__init__()
         self._exp = exp
 class GroupBy(SQL):
     _col: Col
@@ -196,6 +258,7 @@ class GroupBy(SQL):
         return [Token("GROUP", C.KEYWORD), Token("BY", C.KEYWORD)] + self._col._serialize()
     
     def __init__(self, col: Col):
+        super().__init__()
         self._col = col
 class Table(SQL): # yes, I know this is identical to Col for now
     _text: str
@@ -264,6 +327,50 @@ class With(SQL): # with (interpolated)
                 query._post_alias = None
         self._queries = queries
 # TODO document Col and Join CFG changes
+class NewTable(SQL):
+    _query: "Query"
+    _table: Table
+    _method: Token
+    _option: Token
+
+    def AS(self, alias: Union[Table, str]) -> None:
+        if isinstance(alias, str):
+            self._table = Table(alias)
+        else:
+            self._table = alias
+        return self
+
+    def _serialize(self) -> List[Token]:
+        result = [self._method] + self._table._serialize()
+        if self._option:
+            result += [self._option]
+        result += [AS, LP] + self._query._serialize() + [RP]
+        return result
+
+    def __init__(
+        self,
+        METHOD:Token,
+        AS:"Query",
+        NAME:Union[str, Table],
+        OPTION:Optional[Token] = None
+    ):
+        super().__init__()
+
+        if METHOD in (CREATE_OR_REPLACE, CREATE_OR_REPLACE_TEMP) and OPTION==IF_NOT_EXISTS:
+            raise Exception(f"{METHOD.data} cannot appear with {OPTION.data}")
+
+        # _method
+        self._method = METHOD
+        # _query
+        self._query = AS
+        # _table
+        if isinstance(NAME, str):
+            self._table = Table(NAME)
+        else:
+            self._table = NAME
+        # _option
+        self._option = OPTION
+
 class Query(SQL): # query_expr
     _with: Optional[With]
     _operation: Union[Select, "Query", SetOperation]
@@ -319,7 +426,7 @@ class Query(SQL): # query_expr
         QUALIFY: Optional[Qualify] = None,
         WINDOW: Optional[Window] = None,
         # these two actually belong to a query in the grammar
-        ORDER_BY: Optional[Union[OrderBy, Col, Tuple[Col, Token]]] = None,
+        ORDER_BY: Optional[Union[OrderBy, Col, Tuple[Col, Token]]] = None, # TODO: need to cover Exp and (Exp, Token)
         LIMIT: Optional[Limit] = None,
         AS: Optional[str] = None,
         # the rest of the join types go here to avoid cluttering the tooltip
@@ -355,7 +462,17 @@ class Query(SQL): # query_expr
 
         # _select args
         self._where = WHERE
-        self._group_by = GROUP_BY
+
+
+        # _group_by
+        #Optional[Union[Col, GroupBy]]
+        if GROUP_BY is None:
+            self._group_by = None
+        elif isinstance(GROUP_BY, Col):
+            self._group_by = GroupBy(GROUP_BY)
+        else:
+            self._group_by = GROUP_BY
+       
         self._having = HAVING
         self._qualify = QUALIFY
         self._window = WINDOW
@@ -364,11 +481,21 @@ class Query(SQL): # query_expr
         self._pre_alias = None
         self._post_alias = AS
 
+        # _order_by
+        # Optional[Union[OrderBy, Col, Tuple[Col, Token]]]
+        if ORDER_BY is None:
+            self._order_by = None
+        elif isinstance(ORDER_BY, OrderBy):
+            self._order_by = ORDER_BY
+        elif isinstance(ORDER_BY, Col):
+            self._order_by = OrderBy(ORDER_BY)
+        else :
+            self._order_by = OrderBy(col=ORDER_BY[0], order=ORDER_BY[1])
+        
         # query args
-        self._order_by = OrderBy.raw(ORDER_BY) if ORDER_BY else None
         self._limit = Limit.raw(LIMIT) if LIMIT else None
 
 #TODO
 # isinstance checks for newly supported parameters
 # tests for new parameters
-# more literal delexing 
+# more literal delexing -> TAD

@@ -1,5 +1,5 @@
 from unittest import TestCase
-from barbq.query import Col, Exp, On, OrderBy, Query, Table, Where
+from barbq.query import CREATE, CREATE_OR_REPLACE_TEMP, Col, Exp, NewTable, On, OrderBy, Query, Table, Where, DESC, ASC
 class TestQuery(TestCase):
     def test_minimal_query(self):
         basic_query = Query(
@@ -13,6 +13,24 @@ class TestQuery(TestCase):
         print(basic_query.render())
         expected = """SELECT `grannies`.`name` , `specialty` , `grannies`.`hobby` FROM `acceptance-237317`.`kirby`.`grandmothers` AS `grannies`"""
         assert basic_query.render() == expected
+
+    def test_simple_cte(self):
+        grandmothers = Table("acceptance-237317.kirby.grandmothers").AS("grannies")
+        basic_cte = Query(
+            WITH=[
+                Query(
+                    SELECT=[
+                        Col("specialty"),
+                        Col.raw(f"""COUNT({Col("names")})""")
+                    ],
+                    FROM=grandmothers,
+                    GROUP_BY=Col("specialty"),
+                    AS="summary_specialties"
+                )
+            ],
+            SELECT=[Col.raw("*")],
+            FROM=Table("summary_specialties")
+        )
 
     def test_omniquery(self): # integration test
         ref_scores = Table("acceptance-237317.kirby.ref_scores")
@@ -85,6 +103,12 @@ class TestQuery(TestCase):
     def test_integer_literal_token(self):
         pass
 
+    def test_list_int_literal_token(self):
+        pass
+
+    def test_list_str_literal_token(self):
+        pass
+
     def test_limit(self):
         pass
 
@@ -96,3 +120,32 @@ class TestQuery(TestCase):
 
     def test_order_by_with_sort(self):
         pass
+
+    def test_boolean_and(self):
+        pass
+
+    def test_boolean_or(self):
+        pass
+
+    def test_chained_bool(self):
+        pass
+
+    def test_new_table(self):
+        new_table = Table("currated_scores")
+        new_table_query = NewTable(
+            METHOD=CREATE_OR_REPLACE_TEMP,
+            AS=Query(
+                SELECT=[
+                    Col("scores"),
+                    Col.raw("COUNT(*) AS total")
+                ],
+                FROM=Table("scores_table"),
+                GROUP_BY=Col("scores"),
+                ORDER_BY=OrderBy(Col("total"), DESC)
+            ),
+            NAME=new_table
+        )
+
+        print(new_table_query.render())
+        expected = """'CREATE OR REPLACE TEMP `currated_scores` AS ( SELECT `scores` , COUNT(*) AS total FROM `scores_table` GROUP BY `scores` ORDER BY `total` DESC )'"""
+        assert new_table_query.render() == expected
