@@ -1,9 +1,4 @@
-from ast import Or
-import pstats
 from re import L
-from shutil import register_unpack_format
-from tkinter.messagebox import NO
-from numpy import isin
 import sqlparse
 from typing import Any, List, Optional, Tuple, Union
 from enum import Enum, auto
@@ -18,7 +13,6 @@ class C(Enum):
 
 class Token:
     def __init__(self, data: Union[str, int], category: C):
-        print(data, type(data))
         assert isinstance(data, str) or category == C.LITERAL, "nonliteral tokens cannot have nonstring type"
         self.data = data
         self.category = category
