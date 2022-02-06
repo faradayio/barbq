@@ -1,5 +1,7 @@
 from re import L
 
+from numpy import isin
+
 import sqlparse
 from typing import Any, List, Optional, Tuple, Union
 from enum import Enum, auto
@@ -199,7 +201,7 @@ class OrderBy(SQL):
     _order: Optional[Token]
 
     def _serialize_(self) -> List[Token]:
-        result = [Token("ORDER", C.KEYWORD), BY] + self._col._serialize()
+        result = self._col._serialize()
         if self._order:
             result += [self._order]
         return result
@@ -209,6 +211,17 @@ class OrderBy(SQL):
         self._col = col
         assert order is None or order.data == "ASC" or order.data == "DESC"
         self._order = order
+
+class OrderBys(SQL):
+    _orderbys: List[OrderBy]
+
+    def _serialize_(self) -> List[Token]:
+        return [Token("ORDER", C.KEYWORD), BY] + self._sep([orderby._serialize_() for orderby in self._orderbys], COMMA)
+
+    def __init__(self, orderbys: List[OrderBy]):
+        super().__init__()
+        self._orderbys = orderbys
+
 class Limit(SQL):
     _limit: int
 
@@ -251,11 +264,23 @@ class GroupBy(SQL):
     _col: Col
 
     def _serialize_(self) -> List[Token]:
-        return [Token("GROUP", C.KEYWORD), Token("BY", C.KEYWORD)] + self._col._serialize()
+        return self._col._serialize()
     
     def __init__(self, col: Col):
         super().__init__()
         self._col = col
+
+
+class GroupBys(SQL):
+    _groupbys: List[GroupBy]
+
+    def _serialize_(self) -> List[Token]:
+        return [Token("GROUP", C.KEYWORD), BY] + self._sep([groupby._serialize_() for groupby in self._groupbys], COMMA)
+    
+    def __init__(self, groupbys: List[GroupBy]):
+        super().__init__()
+        self._groupbys = groupbys
+
 class Table(SQL): # yes, I know this is identical to Col for now
     _text: str
     _alias: Optional[str]
@@ -315,14 +340,9 @@ class Except(SQL):
     def _serialize(self) -> List[Token]:
         return [Token("EXCEPT", C.KEYWORD), LP] + self._sep([col._serialize() for col in self._cols], COMMA) + [RP]
 
-    def __init__(self, cols: Union[List[Col], str, Col]):
+    def __init__(self, cols: List[Col]):
         super().__init__()
-        if isinstance(cols, List):
-            self._cols = cols
-        elif isinstance(cols, Col):
-            self._cols = [cols]
-        elif isinstance(cols, str):
-            self._cols = [Col(cols)]
+        self._cols = cols
 
 class With(SQL): # with (interpolated)
     _queries: List["Query"]
@@ -393,7 +413,7 @@ class Query(SQL): # query_expr
     _group_by: Optional[GroupBy]
     _having: Optional[Having]
     _qualify: Optional[Qualify]
-    _order_by: Optional[OrderBy]
+    _order_by: Optional[OrderBys]
     _limit: Optional[Limit]
     _pre_alias: Optional[str]
     _post_alias: Optional[str]
@@ -441,7 +461,7 @@ class Query(SQL): # query_expr
         QUALIFY: Optional[Qualify] = None,
         WINDOW: Optional[Window] = None,
         # these two actually belong to a query in the grammar
-        ORDER_BY: Optional[Union[OrderBy, Col, Tuple[Col, Token]]] = None, # TODO: need to cover Exp and (Exp, Token)
+        ORDER_BY: Optional[Union[OrderBy, List[OrderBy], List[Col], Col, Tuple[Col, Token], List[Tuple[Col, Token]]]] = None, # TODO: need to cover Exp and (Exp, Token)
         LIMIT: Optional[Union[Limit, int]] = None,
         AS: Optional[str] = None,
         # the rest of the join types go here to avoid cluttering the tooltip
@@ -461,12 +481,14 @@ class Query(SQL): # query_expr
         elif isinstance(SELECT, Select):
             self._operation = SELECT
 
-
         # _except
+        # Union[str, List[Col], Col, Except]
         if EXCEPT is None:
             self._except = None
         elif isinstance(EXCEPT, Except):
             self._except = EXCEPT
+        elif isinstance(EXCEPT, str):
+            self._except = Except([Col(Except)])
         else:
             self._except = Except(EXCEPT)
 
@@ -505,15 +527,25 @@ class Query(SQL): # query_expr
         self._post_alias = AS
 
         # _order_by
-        # Optional[Union[OrderBy, Col, Tuple[Col, Token]]]
+        # Optional[Union[, List[OrderBy], List[Col], List[Tuple[Col, Token]]]]
         if ORDER_BY is None:
             self._order_by = None
         elif isinstance(ORDER_BY, OrderBy):
-            self._order_by = ORDER_BY
+            self._order_by = OrderBys([ORDER_BY])
         elif isinstance(ORDER_BY, Col):
-            self._order_by = OrderBy(ORDER_BY)
+            self._order_by = OrderBys([OrderBy(ORDER_BY)])
+        elif isinstance(ORDER_BY, Tuple):
+            self._order_by = OrderBys([OrderBy(col=ORDER_BY[0], order=ORDER_BY[1])])
         else :
-            self._order_by = OrderBy(col=ORDER_BY[0], order=ORDER_BY[1])
+            if len(ORDER_BY) == 0:
+                self._order_by = None
+            else:
+                if isinstance(ORDER_BY[0], OrderBy):
+                    self._order_by = OrderBys(ORDER_BY)
+                elif isinstance(ORDER_BY[0], Col):
+                    self._order_by = OrderBys([OrderBy[c] for c in ORDER_BY])
+                else:
+                    self._order_by = OrderBys([OrderBy(col=c[0], order=c[1]) for c in ORDER_BY])
         
         # _limit
         if LIMIT is None:
@@ -526,6 +558,5 @@ class Query(SQL): # query_expr
 #TODO
 # isinstance checks for newly supported parameters
 # tests for new parameters
-# more literal delexing -> TAD
 # partitions
 # search in report templates and scopes and exports queries

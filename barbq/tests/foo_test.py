@@ -127,10 +127,57 @@ class TestQuery(TestCase):
         assert limit_query.render() == expected
 
     def test_star_col(self):
-        pass
+        grandmothers = Table("acceptance-237317.kirby.grandmothers")
+
+        limit_query = Query(
+            FROM=grandmothers,
+            AS="sampled_grannies",
+            LIMIT=100
+        )
+
+        print(limit_query.render())
+        expected = """SELECT * FROM `acceptance-237317`.`kirby`.`grandmothers` LIMIT 100 AS `sampled_grannies`"""
+        print(expected)
+        assert limit_query.render() == expected
+
+        limit_query_2 = Query(
+            SELECT="*",
+            FROM=grandmothers,
+            AS="sampled_grannies",
+            LIMIT=100
+        )
+
+        print(limit_query_2.render())
+        expected = """SELECT * FROM `acceptance-237317`.`kirby`.`grandmothers` LIMIT 100 AS `sampled_grannies`"""
+        assert limit_query_2.render() == expected
 
     def test_order_by(self):
-        pass
+        grandmothers = Table("acceptance-237317.kirby.grandmothers")
+
+        order_query = Query(
+            FROM=grandmothers,
+            ORDER_BY=(Col("name"), DESC)
+        )
+
+        print(order_query.render())
+        expected = """SELECT * FROM `acceptance-237317`.`kirby`.`grandmothers` ORDER BY `name` DESC"""
+        print(expected)
+        assert order_query.render() == expected
+
+        order_query_2 = Query(
+            SELECT="*",
+            FROM=grandmothers,
+            ORDER_BY=[
+                (Col("age"), DESC),
+                (Col("last_name"), ASC),
+                (Col("last_name"), ASC),
+            ],
+            LIMIT=100
+        )
+
+        print(order_query_2.render())
+        expected = """SELECT * FROM `acceptance-237317`.`kirby`.`grandmothers` ORDER BY `age` DESC , `last_name` ASC , `last_name` ASC LIMIT 100"""
+        assert order_query_2.render() == expected
 
     def test_order_by_with_sort(self):
         pass
@@ -147,7 +194,7 @@ class TestQuery(TestCase):
     def test_except(self):
         grandmothers = Table("acceptance-237317.kirby.grandmothers")
 
-        limit_query = Query(
+        except_query = Query(
             SELECT=[
                 Col.raw("*")
             ],
@@ -156,10 +203,10 @@ class TestQuery(TestCase):
             AS="anonymized_grannies",
             LIMIT=100
         )
-        print(limit_query.render())
+        print(except_query.render())
         expected = """SELECT * EXCEPT ( `name` , `date_of_birth` ) FROM `acceptance-237317`.`kirby`.`grandmothers` AS `grannies` LIMIT 100 AS `anonymized_grannies`"""
         print(expected)
-        assert limit_query.render() == expected
+        assert except_query.render() == expected
 
     def test_new_table(self):
         new_table = Table("currated_scores")
