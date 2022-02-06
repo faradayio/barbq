@@ -84,6 +84,7 @@ class TestQuery(TestCase):
 
     def test_interpolation(self):
         assert f"{Col('column')}" == "`column`"
+        assert f"{Col('my_project.my_dataset.my_column')}" == "`my_project`.`my_dataset`.`my_column`"
 
     def test_initialize_from_using_str(self):
         pass
@@ -110,7 +111,20 @@ class TestQuery(TestCase):
         pass
 
     def test_limit(self):
-        pass
+        grandmothers = Table("acceptance-237317.kirby.grandmothers")
+
+        limit_query = Query(
+            SELECT=[
+                Col.raw("*")
+            ],
+            FROM=grandmothers,
+            AS="sampled_grannies",
+            LIMIT=100
+        )
+        print(limit_query.render())
+        expected = """SELECT * FROM `acceptance-237317`.`kirby`.`grandmothers` AS `grannies` LIMIT 100 AS `sampled_grannies`"""
+        print(expected)
+        assert limit_query.render() == expected
 
     def test_star_col(self):
         pass
@@ -130,6 +144,23 @@ class TestQuery(TestCase):
     def test_chained_bool(self):
         pass
 
+    def test_except(self):
+        grandmothers = Table("acceptance-237317.kirby.grandmothers")
+
+        limit_query = Query(
+            SELECT=[
+                Col.raw("*")
+            ],
+            EXCEPT=[Col("name"), Col("date_of_birth")],
+            FROM=grandmothers,
+            AS="anonymized_grannies",
+            LIMIT=100
+        )
+        print(limit_query.render())
+        expected = """SELECT * EXCEPT ( `name` , `date_of_birth` ) FROM `acceptance-237317`.`kirby`.`grandmothers` AS `grannies` LIMIT 100 AS `anonymized_grannies`"""
+        print(expected)
+        assert limit_query.render() == expected
+
     def test_new_table(self):
         new_table = Table("currated_scores")
         new_table_query = NewTable(
@@ -147,5 +178,5 @@ class TestQuery(TestCase):
         )
 
         print(new_table_query.render())
-        expected = """'CREATE OR REPLACE TEMP `currated_scores` AS ( SELECT `scores` , COUNT(*) AS total FROM `scores_table` GROUP BY `scores` ORDER BY `total` DESC )'"""
+        expected = """CREATE OR REPLACE TEMP `currated_scores` AS ( SELECT `scores` , COUNT(*) AS total FROM `scores_table` GROUP BY `scores` ORDER BY `total` DESC )"""
         assert new_table_query.render() == expected

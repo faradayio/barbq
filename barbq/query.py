@@ -1,4 +1,5 @@
 from re import L
+
 import sqlparse
 from typing import Any, List, Optional, Tuple, Union
 from enum import Enum, auto
@@ -215,6 +216,7 @@ class Limit(SQL):
         return [Token("LIMIT", C.KEYWORD), Token(self._limit, C.LITERAL)]
     
     def __init__(self, limit: int):
+        super().__init__()
         self._limit = limit
 class Using(SQL):
     _col: Col
@@ -306,6 +308,22 @@ class Select(SQL):
             self._cols = cols
         elif isinstance(cols, str):
             self._cols = [Col(cols)]
+
+class Except(SQL):
+    _cols: List[Col]
+
+    def _serialize(self) -> List[Token]:
+        return [Token("EXCEPT", C.KEYWORD), LP] + self._sep([col._serialize() for col in self._cols], COMMA) + [RP]
+
+    def __init__(self, cols: Union[List[Col], str, Col]):
+        super().__init__()
+        if isinstance(cols, List):
+            self._cols = cols
+        elif isinstance(cols, Col):
+            self._cols = [cols]
+        elif isinstance(cols, str):
+            self._cols = [Col(cols)]
+
 class With(SQL): # with (interpolated)
     _queries: List["Query"]
 
@@ -368,6 +386,7 @@ class NewTable(SQL):
 class Query(SQL): # query_expr
     _with: Optional[With]
     _operation: Union[Select, "Query", SetOperation]
+    _except: Optional[List[Col]]
     _from: From
     _join: Optional[Join]
     _where: Optional[Where]
@@ -388,6 +407,7 @@ class Query(SQL): # query_expr
         query = self._chain([
             self._with,
             self._operation,
+            self._except,
             self._from,
             self._join,
             self._where,
@@ -410,6 +430,7 @@ class Query(SQL): # query_expr
         self,
         WITH: Optional[Union[List["Query"], With]] = None,
         SELECT: Union[str, List[Col], Select] = "*",
+        EXCEPT: Union[str, List[Col], Col, Except] = None,
         # these all technically belong to select
         FROM: Optional[Union[str, Table, "Query", From]] = None,
         JOIN: Optional[Tuple[Union[Table, "Query"], Union[On, Using]]] = None, # will be supported with something like the signature below in a (near-)future release
@@ -421,7 +442,7 @@ class Query(SQL): # query_expr
         WINDOW: Optional[Window] = None,
         # these two actually belong to a query in the grammar
         ORDER_BY: Optional[Union[OrderBy, Col, Tuple[Col, Token]]] = None, # TODO: need to cover Exp and (Exp, Token)
-        LIMIT: Optional[Limit] = None,
+        LIMIT: Optional[Union[Limit, int]] = None,
         AS: Optional[str] = None,
         # the rest of the join types go here to avoid cluttering the tooltip
     ):
@@ -440,6 +461,15 @@ class Query(SQL): # query_expr
         elif isinstance(SELECT, Select):
             self._operation = SELECT
 
+
+        # _except
+        if EXCEPT is None:
+            self._except = None
+        elif isinstance(EXCEPT, Except):
+            self._except = EXCEPT
+        else:
+            self._except = Except(EXCEPT)
+
         # _from
         if FROM is None:
             self._from = From(Table.raw(""))
@@ -456,7 +486,6 @@ class Query(SQL): # query_expr
 
         # _select args
         self._where = WHERE
-
 
         # _group_by
         #Optional[Union[Col, GroupBy]]
@@ -486,10 +515,17 @@ class Query(SQL): # query_expr
         else :
             self._order_by = OrderBy(col=ORDER_BY[0], order=ORDER_BY[1])
         
-        # query args
-        self._limit = Limit.raw(LIMIT) if LIMIT else None
+        # _limit
+        if LIMIT is None:
+            self._limit = None
+        elif isinstance(LIMIT, Limit):
+            self._limit = LIMIT
+        else:
+            self._limit = Limit(LIMIT)
 
 #TODO
 # isinstance checks for newly supported parameters
 # tests for new parameters
 # more literal delexing -> TAD
+# partitions
+# search in report templates and scopes and exports queries
