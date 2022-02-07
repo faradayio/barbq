@@ -1,5 +1,20 @@
 from unittest import TestCase
-from barbq.query import CREATE, CREATE_OR_REPLACE_TEMP, Col, Exp, NewTable, On, OrderBy, Query, Table, Where, DESC, ASC
+from barbq.query import (
+    CREATE,
+    CREATE_OR_REPLACE_TEMP,
+    Col,
+    Exp,
+    NewTable,
+    On,
+    OrderBy,
+    Query,
+    Table,
+    Where,
+    DESC,
+    ASC,
+    Case,
+    NULL
+)
 class TestQuery(TestCase):
     def test_minimal_query(self):
         basic_query = Query(
@@ -227,3 +242,33 @@ class TestQuery(TestCase):
         print(new_table_query.render())
         expected = """CREATE OR REPLACE TEMP `currated_scores` AS ( SELECT `scores` , COUNT(*) AS total FROM `scores_table` GROUP BY `scores` ORDER BY `total` DESC )"""
         assert new_table_query.render() == expected
+
+    def test_case(self):
+        grandmothers = Table("acceptance-237317.kirby.grandmothers")
+
+        case_query = Query(
+            SELECT=[
+                Col("first_name"),
+                Col("last_name"),
+                Col("investment_resources"),
+                Case(
+                    CASE=[
+                        Exp("investment_resources = 'No Investment' THEN 1"),
+                        Exp("investment_resources = 'Less than $4,999' THEN 2"),
+                        Exp("investment_resources = '$5,000 - $49,999' THEN 3"),
+                        Exp("investment_resources = '$50,000 - $149,999' THEN 4"),
+                        Exp("investment_resources = '$150,000 - $199,999' THEN 5"),
+                        Exp("investment_resources = '$200,000 - $249,999' THEN 6"),
+                        Exp("investment_resources = '$250,000 - $499,999' THEN 7"),
+                        Exp("investment_resources = '$500,000 or more' THEN 8")
+                    ],
+                    ELSE=Exp("NULL")
+                )
+
+            ],
+            FROM=grandmothers
+        )
+        print(case_query.render())
+        expected = """SELECT `first_name` , `last_name` , `investment_resources` , CASE WHEN investment_resources = 'No Investment' THEN 1 WHEN investment_resources = 'Less than $4,999' THEN 2 WHEN investment_resources = '$5,000 - $49,999' THEN 3 WHEN investment_resources = '$50,000 - $149,999' THEN 4 WHEN investment_resources = '$150,000 - $199,999' THEN 5 WHEN investment_resources = '$200,000 - $249,999' THEN 6 WHEN investment_resources = '$250,000 - $499,999' THEN 7 WHEN investment_resources = '$500,000 or more' THEN 8 ELSE NULL END FROM `acceptance-237317`.`kirby`.`grandmothers`"""
+        print(expected)
+        assert case_query.render() == expected

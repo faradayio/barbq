@@ -1,4 +1,5 @@
 from re import L
+from sqlite3 import SQLITE_CREATE_VIEW
 
 from numpy import isin
 
@@ -30,6 +31,7 @@ ASC = Token("ASC", C.KEYWORD)
 DESC = Token("DESC", C.KEYWORD)
 OR = Token("OR", C.KEYWORD)
 AND = Token("AND", C.KEYWORD)
+NULL = Token("NULL", C.KEYWORD)
 
 # new table
 CREATE = Token("CREATE", C.KEYWORD)
@@ -46,6 +48,10 @@ class SQL:
         return self.render()
 
     def render(self) -> str:
+        for token in self._serialize():
+            print(token.data, token.category)
+            print(self._delex(token))
+
         return sqlparse.format(" ".join([self._delex(token) for token in self._serialize()]))
 
     @classmethod
@@ -162,6 +168,24 @@ class Exp(SQL):
             exp if isinstance(exp, "Exp") else Exp(exp)
         )
         return result_exp
+
+class Case(SQL):
+    _cases: List["Exp"]
+    _else: Optional["Exp"]
+
+    def _serialize_(self) -> List[Token]:
+        result = [Token("CASE", C.KEYWORD)]
+        for c in self._cases:
+            result += [Token("WHEN", C.KEYWORD)] + c._serialize()
+        if self._else:
+            result += [Token("ELSE", C.KEYWORD)] + self._else._serialize()
+        result += [Token("END", C.KEYWORD)]
+        return result
+
+    def __init__(self, CASE: List["Exp"], ELSE: Optional["Exp"]=None):
+        super().__init__()
+        self._cases = CASE
+        self._else = ELSE
 
 class SetOperation(SQL):
     pass
@@ -358,6 +382,8 @@ class With(SQL): # with (interpolated)
                 query._pre_alias = query._post_alias
                 query._post_alias = None
         self._queries = queries
+
+
 # TODO document Col and Join CFG changes
 class NewTable(SQL):
     _query: "Query"
