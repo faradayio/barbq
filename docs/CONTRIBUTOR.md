@@ -10,5 +10,5 @@ dev docs
   
   testing pattern
   
-Read the [CFG reference](docs/CFG.md)
+Read the [CFG reference](./CFG.md)
 
