@@ -1,3 +1,5 @@
+Set KirbyG as reviewer
+
 Code Tour (including backbone, pasture)
 
 Feature Wish List
