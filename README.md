@@ -1,42 +1,30 @@
-# barbq
-Python-native SQL dialect that renders to BigQuery
+`barbq` is a python-native SQL dialect that renders to BigQuery
 
-Why: exposes SQL to the machinery of python
+```
+basic_query = Query(
+    SELECT=[
+        Col("grannies.name"),
+        Col("specialty"),
+        Col("grannies.hobby"),
+    ],
+    FROM=Table("project.dataset.grandmothers", AS="grannies"),
+)
 
-How:
+print(basic_query.render())
+```
 
-Data Layer: encode the BQ CFG in typed membership-relations of python objects, write a reverse parser and reverse lexer, which can be chained to form a serializer for BQ ASTs
-guiding design principle: apply the DOF provided by transforms on the CFG against the constraint of intuitive composition
+outputs:
 
-UI Layer: write overloaded/pass-through constructors using Union types
-guiding design principle: apply the DOF provided by python constructor definition against the looks like SQL constraint
+```
+SELECT
+    `grannies`.`name`,
+    'specialty`,
+    `grannies`.`hobby`
+FROM `project`.`dataset`.`grandmothers` AS `grannies`
+```
 
-constraints, degrees of freedom, constraints come from reliability/formalism concerns, or from UI concerns
+This is useful because it exposes the logic of SQL to the machinery of python (imagine using a list comprehension as your SELECT argument) while maintaining the appearance of SQL (the Table() and Col() constructors above can be removed and the raw strings will be automatically passed to appropriate constructors).
 
-design principles:
-    there are intuitive composability options
-    but, unopinionated composability
-    there are looks-like-SQL constructor options
-    but, unopinionated constructors
+To get started, you will want to install `pip install barbq` and `from barbq.query import Query, Table, Col, Join, Exp, etc`. Type hints are also strongly recommended, as they are one of the best ways to pick up the dialect.
 
-What it looks like:
-# python -> SQL pair
-
-What the internals look like:
-# constructor
-# 
-
-
-
-Tradeoffs left to the user:
-
-Your code can look like SQL; the more pythonic power you want, the more your code will look like python
-
-You can use the constructor-overloading to make your code look like SQL; the more type validation you want, the more your code will look like type-annotated SQL
-
-to be exported to supporting-but-linked docs
-
-1. write megaquery->copy out chunks to named-objects/generator-func calls
-2. I am lazy->I want to reuse existing chunks and easily write SQL around them
-
-barbq objects are immutable, but support non-inplace mutations using functions named after the constructor keyword args
+See also the [user guide](docs/USER.md), [contributor guide](docs/CONTRIBUTOR.md), or even the [CFG reference](docs/CFG.md).
