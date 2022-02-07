@@ -48,10 +48,6 @@ class SQL:
         return self.render()
 
     def render(self) -> str:
-        for token in self._serialize():
-            print(token.data, token.category)
-            print(self._delex(token))
-
         return sqlparse.format(" ".join([self._delex(token) for token in self._serialize()]))
 
     @classmethod
