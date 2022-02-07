@@ -4,11 +4,13 @@ from barbq.query import (
     CREATE_OR_REPLACE_TEMP,
     Col,
     Exp,
+    GroupBy,
     NewTable,
     On,
     OrderBy,
     Query,
     Table,
+    Using,
     Where,
     DESC,
     ASC,
@@ -105,18 +107,76 @@ class TestQuery(TestCase):
         pass
 
     def test_using(self):
-        pass
+        grandmothers = Table("acceptance-237317.kirby.grandmothers").AS("grannies")
+        baking_goods = Table("acceptance-237317.kirby.baking")
+
+        using_query = Query(
+            SELECT=[
+                Col("first_name"),
+                Col("last_name"),
+                Col.raw("item AS signature_baking")
+            ],
+            FROM=grandmothers,
+            JOIN=(baking_goods,Using(Col("dish_id")))
+        )
+        print(using_query.render())
+        expected = """SELECT `first_name` , `last_name` , item AS signature_baking FROM `acceptance-237317`.`kirby`.`grandmothers` AS `grannies` JOIN `acceptance-237317`.`kirby`.`baking` USING `dish_id`"""
+        print(expected)
+        assert using_query.render() == expected
 
     def test_on(self):
-        pass
+        grandmothers = Table("acceptance-237317.kirby.grandmothers").AS("grannies")
+        baking_goods = Table("acceptance-237317.kirby.baking"). AS("baking")
+
+        on_query = Query(
+            SELECT=[
+                Col("first_name"),
+                Col("last_name"),
+                Col.raw("item AS signature_baking")
+            ],
+            FROM=grandmothers,
+            JOIN=(baking_goods,On(Col("grannies.baki_id"), Col("baking.id")))
+        )
+        print(on_query.render())
+        expected = """SELECT `first_name` , `last_name` , item AS signature_baking FROM `acceptance-237317`.`kirby`.`grandmothers` AS `grannies` JOIN `acceptance-237317`.`kirby`.`baking` AS `baking` ON `grannies`.`baki_id` = `baking`.`id`"""
+        print(expected)
+        assert on_query.render() == expected
 
     def test_where(self):
-        pass
-
+        grandmothers = Table("acceptance-237317.kirby.grandmothers").AS("grannies")
+        where_query = Query(
+            SELECT=[
+                Col("name"),
+                Col.raw(
+                    "CAST(chololate AS float64) + CAST(flour AS float64) + CAST(knitting AS float64) AS baking_score"
+                )
+            ],
+            FROM=grandmothers,
+            AS="summary_scores",
+            WHERE=Where.raw("""WHERE granny='mary' OR age > 65"""),
+        )
+        print(where_query.render())
+        expected = """SELECT `name` , CAST(chololate AS float64) + CAST(flour AS float64) + CAST(knitting AS float64) AS baking_score FROM `acceptance-237317`.`kirby`.`grandmothers` AS `grannies` WHERE granny='mary' OR age > 65 AS `summary_scores`"""
+        print(expected)
+        assert where_query.render() == expected
+        
     def test_group_by(self):
-        pass
+        grandmothers = Table("acceptance-237317.kirby.grandmothers").AS("grannies")
+        group_query = Query(
+            SELECT=[
+                Col.raw("DIV(age, 5) * 5 AS age_bin"),
+                Col.raw("COUNT(*) AS pop_count")
+            ],
+            FROM=grandmothers,
+            GROUP_BY=Col.raw("COUNT(*)")
+        )
+        print(group_query.render())
+        expected = """SELECT DIV(age, 5) * 5 AS age_bin , COUNT(*) AS pop_count FROM `acceptance-237317`.`kirby`.`grandmothers` AS `grannies` COUNT(*)"""
+        print(expected)
+        assert group_query.render() == expected
 
     def test_integer_literal_token(self):
+        # for not this is covered by test_limit
         pass
 
     def test_list_int_literal_token(self):
@@ -195,7 +255,23 @@ class TestQuery(TestCase):
         assert order_query_2.render() == expected
 
     def test_order_by_with_sort(self):
-        pass
+        grandmothers = Table("acceptance-237317.kirby.grandmothers").AS("grannies")
+        order_w_sort_query = Query(
+            SELECT=[
+                Col("first_name"),
+                Col("last_name"),
+                Col("age")
+            ],
+            FROM=grandmothers,
+            ORDER_BY=[
+                (Col("age"), ASC),
+                (Col("last_name"), DESC)
+            ]
+        )
+        print(order_w_sort_query.render())
+        expected = """SELECT `first_name` , `last_name` , `age` FROM `acceptance-237317`.`kirby`.`grandmothers` AS `grannies` ORDER BY `age` ASC , `last_name` DESC"""
+        print(expected)
+        assert order_w_sort_query.render() == expected
 
     def test_boolean_and(self):
         pass

@@ -258,7 +258,8 @@ class Using(SQL):
         return [Token("USING", C.KEYWORD)] + self._col._serialize()
 
     def __init__(self, col: Col):
-        self._col = Col
+        super().__init__()
+        self._col = col
 
 class On(SQL):
     _col1: Col
@@ -268,6 +269,7 @@ class On(SQL):
         return [Token("ON", C.KEYWORD)] + self._col1._serialize() + [Token("=", C.OPERATOR)] + self._col2._serialize()
     
     def __init__(self, col1: Col, col2: Col):
+        super().__init__()
         self._col1 = col1
         self._col2 = col2
 
