@@ -88,44 +88,41 @@ class SQL:
     def _delex_root(cls, data: Any) -> str:
         if isinstance(data, str):
             return f"'{data}'"
-        elif isinstance(data, bool):
+        if isinstance(data, bool):
             return str(data).lower()
-        elif isinstance(data, list):
+        if isinstance(data, list):
             return ", ".join([cls._delex_root(x) for x in data])
-        elif isinstance(data, tuple):
+        if isinstance(data, tuple):
             return ", ".join([cls._delex_root(x) for x in data])
-        else:
-            raise Exception(f"unknown conversion for type: {type(data)}")
+        raise Exception(f"unknown conversion for type: {type(data)}")
 
     @classmethod
     def _delex(cls, token: Token) -> str:
         if token.category == C.KEYWORD:
             return token.data
-        elif token.category == C.SPECIAL:
+        if token.category == C.SPECIAL:
             return token.data
-        elif token.category == C.RAW:
+        if token.category == C.RAW:
             return token.data
-        elif token.category == C.OPERATOR:
+        if token.category == C.OPERATOR:
             return token.data
-        elif token.category == C.LITERAL: # TODO more supported literal types to come
+        if token.category == C.LITERAL: # TODO more supported literal types to come
             if isinstance(token.data, int):
                 return str(token.data)
-            elif isinstance(token.data, float):
+            if isinstance(token.data, float):
                 return str(token.data)
-            elif isinstance(token.data, list):
+            if isinstance(token.data, list):
                 return cls._delex_root(token.data)
-            elif isinstance(token.data, tuple):
+            if isinstance(token.data, tuple):
                 return cls._delex_root(token.data)
-            elif isinstance(token.data, dict):
+            if isinstance(token.data, dict):
                 return cls._delex_root(token.data.values())
-            elif isinstance(token.data, bool):
+            if isinstance(token.data, bool):
                 return str(token.data).lower()
-            else:
-                return f"'{token.data}'"
-        elif token.category == C.IDENTIFIER:
+            return f"'{token.data}'"
+        if token.category == C.IDENTIFIER:
             return ".".join([f"`{path_component}`" for path_component in token.data.split(".")])
-        else:
-            raise Exception(f"unknown conversion for type: {type(token.data)}")
+        raise Exception(f"unknown conversion for type: {type(token.data)}")
 
     def _serialize_(self) -> List[Token]:
         pass
@@ -147,7 +144,7 @@ class Exp(SQL):
         super().__init__()
         self._expression = expression # TODO add some basic validation here
 
-    def AND(self, exp: Union[str, "Exp"]) -> "Exp": # add column as potential input
+    def __and__(self, exp: Union[str, "Exp"]) -> "Exp": # add column as potential input
         result_exp = Exp("")
         result_exp._expression = (
             self,
@@ -156,15 +153,116 @@ class Exp(SQL):
         )
         return result_exp
 
-    def OR(self, exp: Union[str, "Exp"]) -> "Exp": # add column as potential input
+    def __or__(self, exp: Union[str, "Exp"]) -> "Exp": # add column as potential input
         result_exp = Exp("")
         result_exp._expression = (
             self,
             OR,
-            exp if isinstance(exp, "Exp") else Exp(exp)
+            exp if isinstance(exp, Exp) else Lit(exp)
         )
         return result_exp
 
+class Func(Exp):
+    pass
+
+class ARRAY_CONCAT(Func):
+    _exp: Exp
+
+    def _serialize(self) -> List[Token]:
+        return [Token("ARRAY_CONCAT", C.KEYWORD), LP] + self._exp._serialize() + [RP]
+
+    def __init__(self, exp: Union[str, Exp]):
+        self._exp = Exp(exp)
+
+class ARRAY_LENGTH(Func):
+    _exp: Exp
+
+    def _serialize(self) -> List[Token]:
+        return [Token("ARRAY_LENGTH", C.KEYWORD), LP] + self._exp._serialize() + [RP]
+
+    def __init__(self, exp: Union[str, Exp]):
+        self._exp = Exp(exp)
+
+class ARRAY_TO_STRING(Func):
+    _exp: Exp
+
+    def _serialize(self) -> List[Token]:
+        return [Token("ARRAY_TO_STRING", C.KEYWORD), LP] + self._exp._serialize() + [RP]
+
+    def __init__(self, exp: Union[str, Exp]):
+        self._exp = Exp(exp)
+
+class GENERATE_ARRAY(Func):
+    _exp: Exp
+
+    def _serialize(self) -> List[Token]:
+        return [Token("GENERATE_ARRAY", C.KEYWORD), LP] + self._exp._serialize() + [RP]
+
+    def __init__(self, exp: Union[str, Exp]):
+        self._exp = Exp(exp)
+
+class GENERATE_DATE_ARRAY(Func):
+    _exp: Exp
+
+    def _serialize(self) -> List[Token]:
+        return [Token("GENERATE_DATE_ARRAY", C.KEYWORD), LP] + self._exp._serialize() + [RP]
+
+    def __init__(self, exp: Union[str, Exp]):
+        self._exp = Exp(exp)
+
+class GENERATE_TIMESTAMP_ARRAY(Func):
+    _exp: Exp
+
+    def _serialize(self) -> List[Token]:
+        return [Token("GENERATE_TIMESTAMP_ARRAY", C.KEYWORD), LP] + self._exp._serialize() + [RP]
+
+    def __init__(self, exp: Union[str, Exp]):
+        self._exp = Exp(exp)
+
+class ARRAY_REVERSE(Func):
+    _exp: Exp
+
+    def _serialize(self) -> List[Token]:
+        return [Token("ARRAY_REVERSE", C.KEYWORD), LP] + self._exp._serialize() + [RP]
+
+    def __init__(self, exp: Union[str, Exp]):
+        self._exp = Exp(exp)
+
+class OVER(Func):
+    _partition_by: Exp
+    _order_by: Optional[Exp]
+
+    def _serialize_(self) -> List[Token]:
+        return [Token("OVER", C.KEYWORD), LP, Token("PARTITION", C.KEYWORD), BY] + self._partition_by._serialize() + ([Token("ORDER", C.KEYWORD), BY] + self._order_by._serialize() if self._order_by else []) + [RP]
+
+    def __init__(
+        self,
+        PARTITION_BY: Optional[Union[str, Exp]] = None,
+        ORDER_BY: Optional[Union[str, Exp]] = None,
+    ):
+        self._partition_by = Exp(PARTITION_BY)
+        self._order_by = Exp(ORDER_BY)
+
+print((Exp("exp1") & Exp("exp2")).render()) # exp1 AND exp2
+
+class Lit(Exp):
+    pass
+class Col(Exp):
+    _text: Union[str, Exp]
+    _alias: Optional[str]
+
+    # syntactic sugar for changing or setting alias
+    def AS(self, alias: str) -> None:
+        self._alias = alias
+        return self
+
+    def _serialize_(self) -> List[Token]:
+        return ([Token(self._text, C.SPECIAL) if self._text == "*" else Token(self._text, C.IDENTIFIER)] if isinstance(self._text, str) else self._text._serialize()) + ([AS, Token(self._alias, C.IDENTIFIER)] if self._alias else [])
+
+    def __init__(self, text: Union[str, Exp], AS: Optional[str] = None):
+        super().__init__()
+        self._text = text
+        self._alias = AS
 class Case(SQL):
     _cases: List["Exp"]
     _else: Optional["Exp"]
@@ -199,22 +297,6 @@ class Value(SQL):
     pass
 class SelectMode(SQL):
     pass
-class Col(SQL):
-    _text: Union[str, Exp]
-    _alias: Optional[str]
-
-    # syntactic sugar for changing or setting alias
-    def AS(self, alias: str) -> None:
-        self._alias = alias
-        return self
-
-    def _serialize_(self) -> List[Token]:
-        return ([Token(self._text, C.SPECIAL) if self._text == "*" else Token(self._text, C.IDENTIFIER)] if isinstance(self._text, str) else self._text._serialize()) + ([AS, Token(self._alias, C.IDENTIFIER)] if self._alias else [])
-
-    def __init__(self, text: Union[str, Exp], AS: Optional[str] = None):
-        super().__init__()
-        self._text = text
-        self._alias = AS
 
 class OrderBy(SQL):
     _col: Col
@@ -283,25 +365,17 @@ class Where(SQL):
         super().__init__()
         self._exp = exp
 class GroupBy(SQL):
-    _col: Col
+    _exps: List[Exp]
 
     def _serialize_(self) -> List[Token]:
-        return self._col._serialize()
+        return [Token("GROUP", C.KEYWORD), BY] + self._sep([exp._serialize_() for exp in self._exps], COMMA)
     
-    def __init__(self, col: Col):
+    def __init__(self, exps: Union[Exp, List[Exp]]):
         super().__init__()
-        self._col = col
-
-
-class GroupBys(SQL):
-    _groupbys: List[GroupBy]
-
-    def _serialize_(self) -> List[Token]:
-        return [Token("GROUP", C.KEYWORD), BY] + self._sep([groupby._serialize_() for groupby in self._groupbys], COMMA)
-    
-    def __init__(self, groupbys: List[GroupBy]):
-        super().__init__()
-        self._groupbys = groupbys
+        if isinstance(exps, Exp):
+            self._exps = [exps]
+        else:
+            self._exps = exps
 
 class Table(SQL): # yes, I know this is identical to Col for now
     _text: str
