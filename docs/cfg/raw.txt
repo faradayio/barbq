@@ -1,0 +1,158 @@
+query_statement:
+    query_expr
+
+query_expr:
+    [ WITH [ RECURSIVE ] { non_recursive_cte | recursive_cte }[, ...] ]
+    { select | ( query_expr ) | set_operation }
+    [ ORDER BY expression [{ ASC | DESC }] [, ...] ]
+    [ LIMIT count [ OFFSET skip_rows ] ]
+
+select:
+    SELECT [ AS { STRUCT | VALUE } ] [{ ALL | DISTINCT }]
+        { [ expression. ]* [ EXCEPT ( column_name [, ...] ) ]
+            [ REPLACE ( expression [ AS ] column_name [, ...] ) ]
+        | expression [ [ AS ] alias ] } [, ...]
+    [ FROM from_clause[, ...] ]
+    [ WHERE bool_expression ]
+    [ GROUP BY { expression [, ...] | ROLLUP ( expression [, ...] ) } ]
+    [ HAVING bool_expression ]
+    [ QUALIFY bool_expression ]
+    [ WINDOW window_clause ]
+
+
+SELECT [ AS { typename | STRUCT | VALUE } ] [{ ALL | DISTINCT }]
+    { [ expression. ]* [ EXCEPT ( column_name [, ...] ) ]
+        [ REPLACE ( expression [ AS ] column_name [, ...] ) ]
+    | expression [ [ AS ] alias ] } [, ...]
+
+
+FROM from_clause[, ...]
+
+from_clause:
+    from_item
+    [ { pivot_operator | unpivot_operator } ]
+    [ tablesample_operator ]
+
+from_item:
+    {
+        table_name [ as_alias ] [ FOR SYSTEM_TIME AS OF timestamp_expression ] 
+        | { join_operation | ( join_operation ) }
+        | ( query_expr ) [ as_alias ]
+        | field_path
+        | unnest_operator
+        | cte_name [ as_alias ]
+    }
+
+as_alias:
+    [ AS ] alias
+
+
+unnest_operator:
+    {
+        UNNEST( array_expression )
+        | UNNEST( array_path )
+        | array_path
+    }
+    [ as_alias ]
+    [ WITH OFFSET [ as_alias ] ]
+
+
+FROM from_item[, ...] unpivot_operator
+
+unpivot_operator:
+    UNPIVOT [ { INCLUDE NULLS | EXCLUDE NULLS } ] (
+        { single_column_unpivot | multi_column_unpivot }
+    ) [unpivot_alias]
+
+single_column_unpivot:
+    values_column
+    FOR name_column
+    IN (columns_to_unpivot)
+
+multi_column_unpivot:
+    values_column_set
+    FOR name_column
+    IN (column_sets_to_unpivot)
+
+values_column_set:
+    (values_column[, ...])
+
+columns_to_unpivot:
+    unpivot_column [row_value_alias][, ...]
+
+column_sets_to_unpivot:
+    (unpivot_column [row_value_alias][, ...])
+
+unpivot_alias and row_value_alias:
+    [AS] alias
+
+
+join_operation:
+    { cross_join_operation | condition_join_operation }
+
+cross_join_operation:
+    from_item cross_join_operator from_item
+
+condition_join_operation:
+    from_item condition_join_operator from_item join_condition
+
+cross_join_operator:
+    { CROSS JOIN | , }
+
+condition_join_operator:
+    {
+      [INNER] JOIN
+      | FULL [OUTER] JOIN
+      | LEFT [OUTER] JOIN
+      | RIGHT [OUTER] JOIN
+    }
+
+join_condition:
+    { on_clause | using_clause }
+
+on_clause:
+    ON bool_expression
+
+using_clause:
+    USING ( join_column [, ...] )
+
+
+ORDER BY expression
+  [{ ASC | DESC }]
+  [{ NULLS FIRST | NULLS LAST }]
+  [, ...]
+
+
+WINDOW named_window_expression [, ...]
+
+named_window_expression:
+  named_window AS { named_window | ( [ window_specification ] ) }
+
+
+set_operation:
+  query_expr set_operator query_expr
+
+set_operator:
+  UNION { ALL | DISTINCT } | INTERSECT DISTINCT | EXCEPT DISTINCT
+
+
+non_recursive_cte:
+    cte_name AS ( query_expr )
+
+
+recursive_cte:
+    cte_name AS ( recursive_union_operation )
+
+recursive_union_operation:
+    base_term union_operator recursive_term
+
+base_term:
+    query_expr
+
+recursive_term:
+    query_expr
+
+union_operator:
+    UNION ALL
+
+

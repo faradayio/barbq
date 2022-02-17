@@ -1,0 +1,121 @@
+query_expr:
+    [with]
+    { select | (query_expr) | set_operation }
+    [ ORDER BY expression [{ ASC | DESC }] [, ...] ]
+    [ LIMIT count [ OFFSET skip_rows ] ]
+
+with: WITH [ RECURSIVE ] { non_recursive_cte | recursive_cte }[, ...]
+non_recursive_cte:
+    cte_name AS ( query_expr )
+recursive_cte:
+    cte_name AS ( query_expr UNION ALL query_expr )
+
+select:
+    SELECT [ AS { STRUCT | VALUE } ] [{ ALL | DISTINCT }]
+        { [ expression. ]* [ EXCEPT ( expression(col) [, ...] ) ]
+            [ REPLACE ( expression [ AS ] expression(col) [, ...] ) ]
+        | expression [ alias ] } [, ...]
+    [from]
+    [where]
+    [group_by]
+    [having]
+    [qualify]
+    [window]
+
+from:
+    FROM
+    {
+        from_item
+        [ { pivot_operator | unpivot_operator } ]
+        [ tablesample_operator ]
+    } [, ...]
+from_item:
+    {
+        table_name [ alias ] [ FOR SYSTEM_TIME AS OF expression(timestamp) ] 
+        | { join_operation | ( join_operation ) }
+        | ( query_expr ) [ alias ]
+        | field_path
+        | unnest_operator
+        | cte_name [ alias ]
+    }
+
+where: WHERE expression(bool)
+group_by: GROUP BY { expression [, ...] | ROLLUP ( expression [, ...] ) }
+having: HAVING expression(bool)
+qualify: QUALIFY expression(bool)
+window: WINDOW named_window_expression [, ...]
+
+alias: [AS] alias
+
+unnest_operator:
+    {
+        UNNEST( expression(array) )
+        | UNNEST( array_path )
+        | array_path
+    }
+    [ alias ]
+    [ WITH OFFSET [ alias ] ]
+
+unpivot_operator:
+    UNPIVOT [ { INCLUDE NULLS | EXCLUDE NULLS } ] (
+        { single_column_unpivot | multi_column_unpivot }
+    ) [alias]
+
+single_column_unpivot:
+    expression(col)
+    FOR expression(col)
+    IN (columns_to_unpivot)
+
+multi_column_unpivot:
+    (expression(col)[, ...])
+    FOR expression(col)
+    IN (column_sets_to_unpivot)
+
+columns_to_unpivot:
+    expression(col) [alias][, ...]
+
+column_sets_to_unpivot:
+    ({expression(col) [alias]}[, ...])
+
+join_operation:
+    { cross_join_operation | condition_join_operation }
+
+cross_join_operation:
+    from_item cross_join_operator from_item
+
+condition_join_operation:
+    from_item condition_join_operator from_item join_condition
+
+cross_join_operator:
+    { CROSS JOIN | , }
+
+condition_join_operator:
+    {
+      [INNER] JOIN
+      | FULL [OUTER] JOIN
+      | LEFT [OUTER] JOIN
+      | RIGHT [OUTER] JOIN
+    }
+
+join_condition:
+    { on_clause | using_clause }
+
+on_clause:
+    ON expression(bool)
+
+using_clause:
+    USING ( expression(col) [, ...] )
+
+ORDER BY expression
+  [{ ASC | DESC }]
+  [{ NULLS FIRST | NULLS LAST }]
+  [, ...]
+
+named_window_expression:
+  named_window AS { named_window | ( [ window_specification ] ) }
+
+set_operation:
+  query_expr set_operator query_expr
+
+set_operator:
+  UNION { ALL | DISTINCT } | INTERSECT DISTINCT | EXCEPT DISTINCT

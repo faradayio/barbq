@@ -1,9 +1,3 @@
-from re import L
-from sqlite3 import SQLITE_CREATE_VIEW
-
-from numpy import isin
-
-import sqlparse
 from typing import Any, List, Optional, Tuple, Union
 from enum import Enum, auto
 
@@ -21,17 +15,56 @@ class Token:
         self.data = data
         self.category = category
 
-# commonly used KEYWORD, OPERATOR, and SPECIAL tokens
-AS = Token("AS", C.KEYWORD)
+# keyword tokens
+WITH = Token("WITH", C.KEYWORD)
+RECURSIVE = Token("RECURSIVE", C.KEYWORD)
+ORDER = Token("ORDER", C.KEYWORD)
 BY = Token("BY", C.KEYWORD)
+LIMIT = Token("LIMIT", C.KEYWORD)
+ASC = Token("ASC", C.KEYWORD)
+DESC = Token("DESC", C.KEYWORD)
+LIMIT = Token("LIMIT", C.KEYWORD)
+OFFSET = Token("OFFSET", C.KEYWORD)
+SELECT = Token("SELECT", C.KEYWORD)
+STRUCT = Token("STRUCT", C.KEYWORD)
+VALUE = Token("VALUE", C.KEYWORD)
+ALL = Token("ALL", C.KEYWORD)
+DISTINCT = Token("DISTINCT", C.KEYWORD)
+EXCEPT = Token("EXCEPT", C.KEYWORD)
+REPLACE = Token("REPLACE", C.KEYWORD)
+AS = Token("AS", C.KEYWORD)
+FROM = Token("FROM", C.KEYWORD)
+GROUP = Token("GROUP", C.KEYWORD)
+HAVING = Token("HAVING", C.KEYWORD)
+QUALIFY = Token("QUALIFY", C.KEYWORD)
+WINDOW = Token("WINDOW", C.KEYWORD)
+SYSTEM_TIME = Token("SYSTEM_TIME", C.KEYWORD)
+OF = Token("OF", C.KEYWORD)
+UNNEST = Token("UNNEST", C.KEYWORD)
+UNPIVOT = Token("UNPIVOT", C.KEYWORD)
+INCLUDE = Token("INCLUDE", C.KEYWORD)
+NULLS = Token("NULLS", C.KEYWORD)
+EXCLUDE = Token("EXCLUDE", C.KEYWORD)
+FOR = Token("FOR", C.KEYWORD)
+IN = Token("IN", C.KEYWORD)
+CROSS = Token("CROSS", C.KEYWORD)
+JOIN = Token("JOIN", C.KEYWORD)
+INNER = Token("INNER", C.KEYWORD)
+FULL = Token("FULL", C.KEYWORD)
+OUTER = Token("OUTER", C.KEYWORD)
+LEFT = Token("LEFT", C.KEYWORD)
+RIGHT = Token("RIGHT", C.KEYWORD)
+ON = Token("ON", C.KEYWORD)
+USING = Token("USING", C.KEYWORD)
+FIRST = Token("FIRST", C.KEYWORD)
+LAST = Token("LAST", C.KEYWORD)
+UNION = Token("UNION", C.KEYWORD)
+INTERSECT = Token("INTERSECT", C.KEYWORD)
+
+# special charactor tokens
 LP = Token("(", C.SPECIAL) # left-parenthesis
 RP = Token(")", C.SPECIAL) # right-parenthesis
 COMMA = Token(",", C.SPECIAL)
-ASC = Token("ASC", C.KEYWORD)
-DESC = Token("DESC", C.KEYWORD)
-OR = Token("OR", C.KEYWORD)
-AND = Token("AND", C.KEYWORD)
-NULL = Token("NULL", C.KEYWORD)
 
 # new table
 CREATE = Token("CREATE", C.KEYWORD)
