@@ -66,12 +66,7 @@ LP = Token("(", C.SPECIAL) # left-parenthesis
 RP = Token(")", C.SPECIAL) # right-parenthesis
 COMMA = Token(",", C.SPECIAL)
 
-# new table
-CREATE = Token("CREATE", C.KEYWORD)
-CREATE_TEMP = Token("CREATE_TEMP", C.KEYWORD)
-CREATE_OR_REPLACE = Token("CREATE OR REPLACE", C.KEYWORD)
-CREATE_OR_REPLACE_TEMP = Token("CREATE OR REPLACE TEMP", C.KEYWORD)
-IF_NOT_EXISTS = Token("IF NOT EXISTS", C.KEYWORD)
+
 
 class SQL:
     def __init__(self):

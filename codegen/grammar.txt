@@ -1,0 +1,106 @@
+Query:
+    [ With ]
+    { Select | ( Query ) | Query { UNION { ALL | DISTINCT } | INTERSECT DISTINCT | EXCEPT DISTINCT } Query }
+    [ OrderBy ]
+    [ Limit ]
+
+OrderBy: {... Exp [ { ASC | DESC } ] [ { NULLS FIRST | NULLS LAST } ] ...}
+
+Limit:
+    Exp
+    [ Offset ]
+
+Offset: Exp(int)
+
+With: [ RECURSIVE ] { Cte | RecursiveCte } [, ...]
+
+Cte: Exp AS ( Query )
+
+RecursiveCte: Exp AS ( Query UNION ALL Query )
+
+Select:
+    [ AS { STRUCT | VALUE } ] [ { ALL | DISTINCT } ]
+    {... { [ Exp . ] * [ Except ] [ Replace ] | Exp [ As ] } ...}
+    [ From ]
+    [ Where ]
+    [ GroupBy ]
+    [ Having ]
+    [ Qualify ]
+    [ Window ]
+
+Except: ( {... Exp ...} )
+
+Replace: ( {... Exp [ AS ] Exp ...} )
+
+Where: Exp(boo)
+
+GroupBy: { {... Exp ...} | ROLLUP ( {... Exp ...} ) }
+
+Having: Exp(boo)
+
+Qualify: Exp(boo)
+
+Window: {... named_window AS { named_window | ( [ window_specification ] ) } ...}
+
+From: {... Relation [ { pivot_operator | Unpivot } ] [ tablesample_operator ] ...}
+
+Relation: { table_name [ As ] [ ForSystemTimeAsOf ] | ( Query ) [ As ] | field_path | unnest_operator | cte_name [ As ] }
+
+ForSystemTimeAsOf: Exp(tim)
+
+As: alias
+
+unnest_operator:
+    {
+        UNNEST( Exp(array) )
+        | UNNEST( array_path )
+        | array_path
+    }
+    [ As ]
+    [ WITH OFFSET [ alias ] ]
+
+Unpivot:
+    [ { INCLUDE NULLS | EXCLUDE NULLS } ]
+    ( { single_column_unpivot | multi_column_unpivot } ) [ As ]
+
+single_column_unpivot:
+    Exp(col)
+    FOR Exp(col)
+    IN (columns_to_unpivot)
+
+multi_column_unpivot:
+    ( {... Exp(col) ...} )
+    FOR Exp(col)
+    IN ( column_sets_to_unpivot )
+
+In: 
+For: Exp(col)
+
+columns_to_unpivot: {... Exp [ As ] ...}
+
+column_sets_to_unpivot: ( {... Exp [ As ] ...} )
+
+On: Exp
+Using: ( {... Exp ...} )
+
+Relation:
+    INNER_JOIN: { On | Using }
+    JOIN: { On | Using }
+    FULL_OUTER_JOIN: { On | Using }
+    FULL_JOIN: { On | Using }
+    LEFT_OUTER_JOIN: { On | Using }
+    LEFT_JOIN: { On | Using }
+    RIGHT_OUTER_JOIN: { On | Using }
+    RIGHT_JOIN: { On | Using }
+    CROSS_JOIN:
+Exp:
+    connector funcs for all ops
+subclassing
+funcs
+pivot
+alias
+Relations, select, CTEs
+string inputs/table names
+recursive with
+window expressions
+key for the grammar

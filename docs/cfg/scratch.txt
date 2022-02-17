@@ -1,0 +1,79 @@
+(.*)\n
+$1 = Token("$1", C.KEYWORD)\n
+
+C.SPECIAL tokens
+LP
+RP
+COMMA
+STAR
+
+SQL subclasses
+query_expr: Query
+select: Select
+TODO match all of these up
+
+class nonterminal1(SQL):
+    _field1: Optional[nonterminal2]
+    _field2: Union[nonterminal3, nonterminal1, nonterminal4]
+    _field3: Optional[Tuple[Token, Token, Exp, Optional[Union[Token, Token]]]]]
+    _field4: Optional[Tuple[Token, Exp, Optional[nonterminal5]]]
+    _field5: Optional[Token]
+
+    def _serialize_(self):
+        kw_array1 = [KW3, KW4]
+    
+        result = []
+
+        if self._field1:
+            result += self._field1._serialize()
+
+        if self._field2:
+            if isinstance(self._field2, nonterminal3):
+                result += self._field2._serialize()
+            elif isinstance(self._field2, nonterminal1):
+                result += + self._field2._serialize()
+            elif isinstance(self._field2, nonterminal4):
+                result += self._field2._serialize()
+        
+        if self._field3:
+            result += [self._field3[0]]
+            result += [self._field3[1]]
+            result += self._field3[2]._serialize()
+            if self._field3[3]:
+                result += kw_array[self._field3[3]]
+        
+        if self._field4:
+            result += [self._field4[0]]
+            result += self._field4[1]._serialize()
+            if self._field4[2]:
+                result += self._field4[2]._serializeI()
+
+        if self._field5:
+            result += self._field5
+        
+        return result
+
+    def __init__(self, )
+
+APPROX_QUANTILES(
+  [DISTINCT]
+  expression, number
+  [{IGNORE|RESPECT} NULLS]
+)
+
+approx_quantiles:
+    [ DISTINCT ]
+    expression
+    number
+    [ { IGNORE | RESPECT } NULLS ]
+
+Col("col_name")
+Query(
+    SELECT=
+)
+
+
+
+single unnamed arg
+keyword arg
+pass-thru constructor in tuples

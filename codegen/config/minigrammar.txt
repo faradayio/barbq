@@ -1,6 +1,0 @@
-nonterminal1:
-    [ nonterminal2 ]
-    { nonterminal3 | nonterminal1 | nonterminal4 }
-    [ ASC DESC expression [ { SELECT | FROM } ] ]
-    [ LIMIT expression [ AS nonterminal5 ] ]
-    [ LIMIT ]
