@@ -1,17 +1,17 @@
 bigquery = {
     'QUERY':  ALL(
-        OPT('With'),
+        OPT('WITH'),
         ONE(
-            'Select',
+            'SELECT',
             ALL('(', 'Query', ')'),
             ALL(
-                'Query',
+                'QUERY',
                 ONE(
                     ALL('UNION', ONE('ALL', 'DISTINCT')),
                     ALL('INTERSECT', 'DISTINCT'),
                     ALL('EXCEPT', 'DISTINCT')
                 ),
-                'Query'
+                'QUERY'
             )
         ),
         OPT('ORDERBY'),
@@ -22,5 +22,6 @@ bigquery = {
         OPT(ONE('ASC', 'DESC')),
         OPT('NULLS', ONE('FIRST', 'LAST'))
     )),
-    'LIMIT': ALL('EXP', 'OFFSET')
+    'LIMIT': ALL('EXP', 'OFFSET'),
+    'OFFSET': 'EXP'
 }
