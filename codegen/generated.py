@@ -15,57 +15,18 @@ class Token:
         self.data = data
         self.category = category
 
-# keyword tokens
-WITH = Token("WITH", C.KEYWORD)
-RECURSIVE = Token("RECURSIVE", C.KEYWORD)
-ORDER = Token("ORDER", C.KEYWORD)
-BY = Token("BY", C.KEYWORD)
-LIMIT = Token("LIMIT", C.KEYWORD)
-ASC = Token("ASC", C.KEYWORD)
-DESC = Token("DESC", C.KEYWORD)
-LIMIT = Token("LIMIT", C.KEYWORD)
-OFFSET = Token("OFFSET", C.KEYWORD)
-SELECT = Token("SELECT", C.KEYWORD)
-STRUCT = Token("STRUCT", C.KEYWORD)
-VALUE = Token("VALUE", C.KEYWORD)
-ALL = Token("ALL", C.KEYWORD)
-DISTINCT = Token("DISTINCT", C.KEYWORD)
-EXCEPT = Token("EXCEPT", C.KEYWORD)
-REPLACE = Token("REPLACE", C.KEYWORD)
-AS = Token("AS", C.KEYWORD)
-FROM = Token("FROM", C.KEYWORD)
-GROUP = Token("GROUP", C.KEYWORD)
-HAVING = Token("HAVING", C.KEYWORD)
-QUALIFY = Token("QUALIFY", C.KEYWORD)
-WINDOW = Token("WINDOW", C.KEYWORD)
-SYSTEM_TIME = Token("SYSTEM_TIME", C.KEYWORD)
-OF = Token("OF", C.KEYWORD)
-UNNEST = Token("UNNEST", C.KEYWORD)
-UNPIVOT = Token("UNPIVOT", C.KEYWORD)
-INCLUDE = Token("INCLUDE", C.KEYWORD)
-NULLS = Token("NULLS", C.KEYWORD)
-EXCLUDE = Token("EXCLUDE", C.KEYWORD)
-FOR = Token("FOR", C.KEYWORD)
-IN = Token("IN", C.KEYWORD)
-CROSS = Token("CROSS", C.KEYWORD)
-JOIN = Token("JOIN", C.KEYWORD)
-INNER = Token("INNER", C.KEYWORD)
-FULL = Token("FULL", C.KEYWORD)
-OUTER = Token("OUTER", C.KEYWORD)
-LEFT = Token("LEFT", C.KEYWORD)
-RIGHT = Token("RIGHT", C.KEYWORD)
-ON = Token("ON", C.KEYWORD)
-USING = Token("USING", C.KEYWORD)
-FIRST = Token("FIRST", C.KEYWORD)
-LAST = Token("LAST", C.KEYWORD)
-UNION = Token("UNION", C.KEYWORD)
-INTERSECT = Token("INTERSECT", C.KEYWORD)
-
 # special charactor tokens
 LP = Token("(", C.SPECIAL) # left-parenthesis
 RP = Token(")", C.SPECIAL) # right-parenthesis
 COMMA = Token(",", C.SPECIAL)
 
+from typeguard import check_type
+def matches_type(var, type):
+    try:
+        check_type('var', var, type)
+        return True
+    except (TypeError):
+        return False
 class SQL:
     def __init__(self):
         self._raw = None
@@ -134,574 +95,103 @@ class SQL:
     def _serialize_(self) -> List[Token]:
         pass
 
-class Query(SQL):
-	_field0: Optional[With]
-	_field1: Union[Select, Query, QueryUnion[TokenUnion[Token, Token], TokenToken, TokenToken]Query]
-	_field2: Optional[OrderBy]
-	_field3: Optional[Limit]
-    
-    def _serialize_(self):
-        result = []
+class LAST:
+    _data: None
+    def __init__(self, *args):
+        self._data = ()
 
-        if blah:
-            pass
 
-        return result
-    
-    def __init__(self, 
-a: None, b: None
-):
+class FIRST:
+    _data: None
+    def __init__(self, *args):
+        self._data = ()
 
-        self._field1 = a
 
+class NULLS:
+    _data: None
+    def __init__(self, *args):
+        self._data = ()
 
 
-class OrderBy(SQL):
+class DESC:
+    _data: None
+    def __init__(self, *args):
+        self._data = ()
 
-    
-    def _serialize_(self):
-        result = []
 
-        if blah:
-            pass
+class ASC:
+    _data: None
+    def __init__(self, *args):
+        self._data = ()
 
-        return result
-    
-    def __init__(self, 
-a: None, b: None
-):
 
-        self._field1 = a
+class EXCEPT:
+    _data: None
+    def __init__(self, *args):
+        self._data = ()
 
 
+class INTERSECT:
+    _data: None
+    def __init__(self, *args):
+        self._data = ()
 
-class Limit(SQL):
-	_field0: Exp
-	_field1: Optional[Offset]
-    
-    def _serialize_(self):
-        result = []
 
-        if blah:
-            pass
+class DISTINCT:
+    _data: None
+    def __init__(self, *args):
+        self._data = ()
 
-        return result
-    
-    def __init__(self, 
-a: None, b: None
-):
 
-        self._field1 = a
+class ALL:
+    _data: None
+    def __init__(self, *args):
+        self._data = ()
 
 
+class UNION:
+    _data: None
+    def __init__(self, *args):
+        self._data = ()
 
-class Offset(SQL):
 
-    
-    def _serialize_(self):
-        result = []
+class SELECT:
+    _data: None
+    def __init__(self, *args):
+        self._data = ()
 
-        if blah:
-            pass
 
-        return result
-    
-    def __init__(self, 
-a: None, b: None
-):
+class EXP:
+    _data: None
+    def __init__(self, *args):
+        self._data = ()
 
-        self._field1 = a
 
+class WITH:
+    _data: None
+    def __init__(self, *args):
+        self._data = ()
 
 
-class With(SQL):
+class OFFSET:
+    _data: Tuple['EXP']
+    def __init__(self, *args):
+        self._data = (([arg for arg in args if matches_type(arg, EXP)] or [None])[0])
 
-    
-    def _serialize_(self):
-        result = []
 
-        if blah:
-            pass
+class LIMIT:
+    _data: Tuple['EXP', 'OFFSET']
+    def __init__(self, *args):
+        self._data = (([arg for arg in args if matches_type(arg, EXP)] or [None])[0], ([arg for arg in args if matches_type(arg, OFFSET)] or [None])[0])
 
-        return result
-    
-    def __init__(self, 
-a: None, b: None
-):
 
-        self._field1 = a
+class ORDERBY:
+    _data: Tuple['EXP', Optional[Union['ASC', 'DESC']], Optional[Tuple['NULLS', Union['FIRST', 'LAST']]]]
+    def __init__(self, *args):
+        self._data = (([arg for arg in args if matches_type(arg, EXP)] or [None])[0], ([arg for arg in args if matches_type(arg, Optional[Union[ASC, DESC]])] or [None])[0], ([arg for arg in args if matches_type(arg, Optional[Tuple[NULLS, Union[FIRST, LAST]]])] or [None])[0])
 
 
-
-class Cte(SQL):
-
-    
-    def _serialize_(self):
-        result = []
-
-        if blah:
-            pass
-
-        return result
-    
-    def __init__(self, 
-a: None, b: None
-):
-
-        self._field1 = a
-
-
-
-class RecursiveCte(SQL):
-
-    
-    def _serialize_(self):
-        result = []
-
-        if blah:
-            pass
-
-        return result
-    
-    def __init__(self, 
-a: None, b: None
-):
-
-        self._field1 = a
-
-
-
-class Select(SQL):
-	_field0: Optional[TokenUnion[Token, Token]]Optional[Union[Token, Token]]
-	_field1: {...Union[Optional[Exp.]*Optional[Except]Optional[Replace], ExpOptional[As]]...}
-	_field2: Optional[From]
-	_field3: Optional[Where]
-	_field4: Optional[GroupBy]
-	_field5: Optional[Having]
-	_field6: Optional[Qualify]
-	_field7: Optional[Window]
-    
-    def _serialize_(self):
-        result = []
-
-        if blah:
-            pass
-
-        return result
-    
-    def __init__(self, 
-a: None, b: None
-):
-
-        self._field1 = a
-
-
-
-class Except(SQL):
-
-    
-    def _serialize_(self):
-        result = []
-
-        if blah:
-            pass
-
-        return result
-    
-    def __init__(self, 
-a: None, b: None
-):
-
-        self._field1 = a
-
-
-
-class Replace(SQL):
-
-    
-    def _serialize_(self):
-        result = []
-
-        if blah:
-            pass
-
-        return result
-    
-    def __init__(self, 
-a: None, b: None
-):
-
-        self._field1 = a
-
-
-
-class Where(SQL):
-
-    
-    def _serialize_(self):
-        result = []
-
-        if blah:
-            pass
-
-        return result
-    
-    def __init__(self, 
-a: None, b: None
-):
-
-        self._field1 = a
-
-
-
-class GroupBy(SQL):
-
-    
-    def _serialize_(self):
-        result = []
-
-        if blah:
-            pass
-
-        return result
-    
-    def __init__(self, 
-a: None, b: None
-):
-
-        self._field1 = a
-
-
-
-class Having(SQL):
-
-    
-    def _serialize_(self):
-        result = []
-
-        if blah:
-            pass
-
-        return result
-    
-    def __init__(self, 
-a: None, b: None
-):
-
-        self._field1 = a
-
-
-
-class Qualify(SQL):
-
-    
-    def _serialize_(self):
-        result = []
-
-        if blah:
-            pass
-
-        return result
-    
-    def __init__(self, 
-a: None, b: None
-):
-
-        self._field1 = a
-
-
-
-class Window(SQL):
-
-    
-    def _serialize_(self):
-        result = []
-
-        if blah:
-            pass
-
-        return result
-    
-    def __init__(self, 
-a: None, b: None
-):
-
-        self._field1 = a
-
-
-
-class From(SQL):
-
-    
-    def _serialize_(self):
-        result = []
-
-        if blah:
-            pass
-
-        return result
-    
-    def __init__(self, 
-a: None, b: None
-):
-
-        self._field1 = a
-
-
-
-class Relation(SQL):
-
-    
-    def _serialize_(self):
-        result = []
-
-        if blah:
-            pass
-
-        return result
-    
-    def __init__(self, 
-a: None, b: None
-):
-
-        self._field1 = a
-
-
-
-class ForSystemTimeAsOf(SQL):
-
-    
-    def _serialize_(self):
-        result = []
-
-        if blah:
-            pass
-
-        return result
-    
-    def __init__(self, 
-a: None, b: None
-):
-
-        self._field1 = a
-
-
-
-class As(SQL):
-
-    
-    def _serialize_(self):
-        result = []
-
-        if blah:
-            pass
-
-        return result
-    
-    def __init__(self, 
-a: None, b: None
-):
-
-        self._field1 = a
-
-
-
-class unnest_operator(SQL):
-	_field0: Union[
-	_field1: UNNEST(Exp(array)
-	_field2: , UNNEST(array_path
-	_field3: , array_path
-	_field4: ]
-	_field5: Optional[As]
-	_field6: Optional[TokenTokenOptional[alias]]
-    
-    def _serialize_(self):
-        result = []
-
-        if blah:
-            pass
-
-        return result
-    
-    def __init__(self, 
-a: None, b: None
-):
-
-        self._field1 = a
-
-
-
-class Unpivot(SQL):
-	_field0: Optional[Union[TokenToken, TokenToken]]
-	_field1: Union[single_column_unpivot, multi_column_unpivot]Optional[As]
-    
-    def _serialize_(self):
-        result = []
-
-        if blah:
-            pass
-
-        return result
-    
-    def __init__(self, 
-a: None, b: None
-):
-
-        self._field1 = a
-
-
-
-class single_column_unpivot(SQL):
-	_field0: Exp(col)
-	_field1: TokenExp(col)
-	_field2: Token(columns_to_unpivot)
-    
-    def _serialize_(self):
-        result = []
-
-        if blah:
-            pass
-
-        return result
-    
-    def __init__(self, 
-a: None, b: None
-):
-
-        self._field1 = a
-
-
-
-class multi_column_unpivot(SQL):
-	_field0: {...Exp(col)...}
-	_field1: TokenExp(col)
-	_field2: Tokencolumn_sets_to_unpivot
-    
-    def _serialize_(self):
-        result = []
-
-        if blah:
-            pass
-
-        return result
-    
-    def __init__(self, 
-a: None, b: None
-):
-
-        self._field1 = a
-
-
-
-class In(SQL):
-	_field0: For:Exp(col)
-    
-    def _serialize_(self):
-        result = []
-
-        if blah:
-            pass
-
-        return result
-    
-    def __init__(self, 
-a: None, b: None
-):
-
-        self._field1 = a
-
-
-
-class columns_to_unpivot(SQL):
-
-    
-    def _serialize_(self):
-        result = []
-
-        if blah:
-            pass
-
-        return result
-    
-    def __init__(self, 
-a: None, b: None
-):
-
-        self._field1 = a
-
-
-
-class column_sets_to_unpivot(SQL):
-
-    
-    def _serialize_(self):
-        result = []
-
-        if blah:
-            pass
-
-        return result
-    
-    def __init__(self, 
-a: None, b: None
-):
-
-        self._field1 = a
-
-
-
-class On(SQL):
-	_field0: Using:{...Exp...}
-    
-    def _serialize_(self):
-        result = []
-
-        if blah:
-            pass
-
-        return result
-    
-    def __init__(self, 
-a: None, b: None
-):
-
-        self._field1 = a
-
-
-
-class Relation(SQL):
-	_field0: INNER_JOIN:Union[On, Using]
-	_field1: JOIN:Union[On, Using]
-	_field2: FULL_OUTER_JOIN:Union[On, Using]
-	_field3: FULL_JOIN:Union[On, Using]
-	_field4: LEFT_OUTER_JOIN:Union[On, Using]
-	_field5: LEFT_JOIN:Union[On, Using]
-	_field6: RIGHT_OUTER_JOIN:Union[On, Using]
-	_field7: RIGHT_JOIN:Union[On, Using]
-	_field8: CROSS_JOIN:
-	_field9: Exp:
-	_field10: connectorfuncsforallops
-	_field11: subclassing
-	_field12: funcs
-	_field13: pivot
-	_field14: alias
-	_field15: Relations,select,CTEs
-	_field16: stringinputs/tablenames
-	_field17: recursivewith
-	_field18: windowexpressions
-	_field19: keyforthegrammar
-    
-    def _serialize_(self):
-        result = []
-
-        if blah:
-            pass
-
-        return result
-    
-    def __init__(self, 
-a: None, b: None
-):
-
-        self._field1 = a
-
+class QUERY:
+    _data: Tuple[Optional['WITH'], Union['SELECT', Tuple['QUERY'], Tuple['QUERY', Union[Tuple['UNION', Union['ALL', 'DISTINCT']], Tuple['INTERSECT', 'DISTINCT'], Tuple['EXCEPT', 'DISTINCT']], 'QUERY']], Optional['ORDERBY'], Optional['LIMIT']]
+    def __init__(self, *args):
+        self._data = (([arg for arg in args if matches_type(arg, Optional[WITH])] or [None])[0], ([arg for arg in args if matches_type(arg, Union[SELECT, Tuple[QUERY], Tuple[QUERY, Union[Tuple[UNION, Union[ALL, DISTINCT]], Tuple[INTERSECT, DISTINCT], Tuple[EXCEPT, DISTINCT]], QUERY]])] or [None])[0], ([arg for arg in args if matches_type(arg, Optional[ORDERBY])] or [None])[0], ([arg for arg in args if matches_type(arg, Optional[LIMIT])] or [None])[0])
