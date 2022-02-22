@@ -1,0 +1,14 @@
+{
+  "name": "wonka",
+  "version": "1.0.0",
+  "description": "Generate data classes from a Context-Free Grammar",
+  "main": "class_generator.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Kirby Gordon",
+  "license": "MIT",
+  "dependencies": {
+    "classy-decorator": "^1.0.4"
+  }
+}

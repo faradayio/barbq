@@ -1,5 +1,5 @@
 const fs = require('fs')
-const { Tok, Opt, Rep, All, One } = require('./grammarTypes.js')
+const { Tok, Opt, Rep, All, One } = require('./grammar_builder.js')
 
 const no_quotes = str => str.split('').filter(c => c !== "'").join('')
 
@@ -18,13 +18,25 @@ class ${name}:
         self._data = (${root.cogs.map(cog => `([arg for arg in args if matches_type(arg, ${no_quotes(build_type(cog))})] or [None])[0]`).join(', ')})
 `
 
-const build_type_system = (preamble, grammar, output) => fs.writeFileSync(output, `${fs.readFileSync(preamble)}\n${Object.keys(grammar).reverse().map(cls => build_class(cls, grammar[cls])).join('\n')}`)
+const generate_classes = (preamble, grammar, output) => fs.writeFileSync(output, `${fs.readFileSync(preamble)}\n${Object.keys(grammar).reverse().map(cls => build_class(cls, grammar[cls])).join('\n')}`)
 
-module.exports = { build_type_system }
+module.exports = { generate_classes }
 
 // TODO
-// T H V tokens
-// generate constant instances for no-param symbols
-// parser so I can see SQL output
-// copy over rest of grammar
+
+// T N tokens
+// regex the Token constants into SQL constants
+
+// serializer so I can see SQL output
+
+// gather all funcs
+// gather all ops
+// format everything using grammar_builder
+// Exp / Relation 2-input funcs
+
 // docstrings to replace type hints
+
+// apply misc mutations
+// tests
+// proliferate the preamble
+// release

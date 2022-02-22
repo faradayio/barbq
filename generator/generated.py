@@ -174,24 +174,24 @@ class WITH:
 
 
 class OFFSET:
-    _data: Tuple['EXP']
+    _data: Tuple[EXP]
     def __init__(self, *args):
         self._data = (([arg for arg in args if matches_type(arg, EXP)] or [None])[0])
 
 
 class LIMIT:
-    _data: Tuple['EXP', 'OFFSET']
+    _data: Tuple[EXP, OFFSET]
     def __init__(self, *args):
         self._data = (([arg for arg in args if matches_type(arg, EXP)] or [None])[0], ([arg for arg in args if matches_type(arg, OFFSET)] or [None])[0])
 
 
 class ORDERBY:
-    _data: Tuple['EXP', Optional[Union['ASC', 'DESC']], Optional[Tuple['NULLS', Union['FIRST', 'LAST']]]]
+    _data: Tuple[EXP, Optional[Union[ASC, DESC]], Optional[Tuple[NULLS, Union[FIRST, LAST]]]]
     def __init__(self, *args):
         self._data = (([arg for arg in args if matches_type(arg, EXP)] or [None])[0], ([arg for arg in args if matches_type(arg, Optional[Union[ASC, DESC]])] or [None])[0], ([arg for arg in args if matches_type(arg, Optional[Tuple[NULLS, Union[FIRST, LAST]]])] or [None])[0])
 
 
 class QUERY:
-    _data: Tuple[Optional['WITH'], Union['SELECT', Tuple['QUERY'], Tuple['QUERY', Union[Tuple['UNION', Union['ALL', 'DISTINCT']], Tuple['INTERSECT', 'DISTINCT'], Tuple['EXCEPT', 'DISTINCT']], 'QUERY']], Optional['ORDERBY'], Optional['LIMIT']]
+    _data: Tuple[Optional[WITH], Union[SELECT, Tuple['QUERY'], Tuple['QUERY', Union[Tuple[UNION, Union[ALL, DISTINCT]], Tuple[INTERSECT, DISTINCT], Tuple[EXCEPT, DISTINCT]], 'QUERY']], Optional[ORDERBY], Optional[LIMIT]]
     def __init__(self, *args):
         self._data = (([arg for arg in args if matches_type(arg, Optional[WITH])] or [None])[0], ([arg for arg in args if matches_type(arg, Union[SELECT, Tuple[QUERY], Tuple[QUERY, Union[Tuple[UNION, Union[ALL, DISTINCT]], Tuple[INTERSECT, DISTINCT], Tuple[EXCEPT, DISTINCT]], QUERY]])] or [None])[0], ([arg for arg in args if matches_type(arg, Optional[ORDERBY])] or [None])[0], ([arg for arg in args if matches_type(arg, Optional[LIMIT])] or [None])[0])

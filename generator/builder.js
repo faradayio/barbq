@@ -1,5 +1,5 @@
-const { build_type_system } = require('./buildTypeSystem')
-const { T, OPT, REP, ALL, ONE } = require('./grammarTypes')
+const { generate_classes } = require('../wonka/class_generator')
+const { T, OPT, REP, ALL, ONE } = require('../wonka/grammar_builder')
 
 bigquery = {
     'QUERY':  ALL(
@@ -42,4 +42,4 @@ bigquery = {
     'LAST': ALL(),
 }
 
-build_type_system('./codegen/preamble.py', bigquery, './codegen/generated.py')
+generate_classes('./codegen/preamble.py', bigquery, './codegen/generated.py', 'python')

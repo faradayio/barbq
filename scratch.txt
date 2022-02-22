@@ -1,0 +1,10 @@
+q = QUERY(
+    WITH(),
+    (QUERY(SELECT())),
+    ORDERBY(
+        EXP(),
+        (NULLS(), FIRST())
+    )
+)
+
+print(q)
