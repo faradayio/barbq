@@ -4,31 +4,39 @@ class GrammarElement {}
 
 @classy()
 class Type { 
-    constructor(type) {
+    constructor(type, basic = false) {
         this.type = type
-        
+        this.basic = basic
     }
 }
-@classy()
-class T { constructor(t) { this.token = token } }
+
+const string = Type('string', true)
+const number = Type('number', true)
+const array = Type('array', true)
+const boolean = Type('boolean', true)
 
 @classy()
-class N { constructor(custom_type) { this.type = custom_type }}
+class T extends GrammarElement {
+    constructor(type, value = null) {
+        this.type = type
+        this.value = value
+    }
+}
 
 @classy()
-class REP { constructor(cog) { this.cog = cog } }
+class REP extends GrammarElement { constructor(grammar_element) { this.ges = [grammar_element] } }
 
 @classy()
-class OPT { constructor(cog) { this.cog = cog } }
+class OPT extends GrammarElement { constructor(grammar_element) { this.ges = [grammar_element] } }
 
 @classy()
-class ONE { constructor(cogs) { this.cogs = cogs } }
+class ONE extends GrammarElement { constructor(grammar_elements) { this.ges = grammar_elements } }
 
 @classy()
-class ALL { constructor(cogs) { this.cogs = cogs } }
+class ALL extends GrammarElement { constructor(grammar_elements) { this.ges = grammar_elements } }
 
-class C { constructor(custom_type) { this.type = custom_type} }
-
-const str = 
-
-module.exports = { T, N, REP, OPT, ONE, ALL }
+module.exports = {
+    T, REP, OPT, ONE, ALL,
+    Type,
+    string, number, array, boolean
+ }
