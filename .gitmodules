@@ -1,0 +1,3 @@
+[submodule "wonka"]
+	path = wonka
+	url = git@github.com:faradayio/wonka.git
