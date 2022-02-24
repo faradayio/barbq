@@ -1,4 +1,4 @@
-const { generate_classes } = require('../wonka/class_generator')
+const { generate_classes } = require('../wonka/type_system_generator')
 const { T, OPT, REP, ALL, ONE } = require('../wonka/grammar_builder')
 
 bigquery = {
