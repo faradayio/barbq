@@ -93,14 +93,37 @@ Relation:
     RIGHT_OUTER_JOIN: { On | Using }
     RIGHT_JOIN: { On | Using }
     CROSS_JOIN:
-Exp:
-    connector funcs for all ops
-subclassing
+Exp: { Func | Lit | Col | Exp Op Exp }
+Func: { }
 funcs
-pivot
-alias
-Relations, select, CTEs
-string inputs/table names
-recursive with
-window expressions
-key for the grammar
+json deserializer
+__repr__
+my_fig_cohort.json
+from a table or using a filter?
+
+ANY_VALUE(
+  expression
+)
+[OVER (...)]
+
+ARRAY_AGG(
+  [DISTINCT]
+  expression
+  [{IGNORE|RESPECT} NULLS]
+  [ORDER BY key [{ASC|DESC}] [, ... ]]
+  [LIMIT n]
+)
+[OVER (...)]
+
+ARRAY_CONCAT_AGG(
+  expression
+  [ORDER BY key [{ASC|DESC}] [, ... ]]
+  [LIMIT n]
+)
+
+AVG(
+  [DISTINCT]
+  expression
+)
+[OVER (...)]
+
