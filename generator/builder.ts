@@ -1,8 +1,6 @@
-const { generate_classes } = require('../wonka/type_system_generator')
-const { Type, T, OPT, REP, ALL, ONE } = require('../wonka/grammar_builder')
+import { generate_classes } from "../wonka/type_system_generator";
+import { T, OPT, REP, ALL, ONE } from "../wonka/grammar_builder";
 
-bigquery = [
-    
-]
+const bigquery = [];
 
-generate_classes('./preamble.py', bigquery, './generated.py', 'python')
+generate_classes("./preamble.py", bigquery, "./generated.py", "python");
