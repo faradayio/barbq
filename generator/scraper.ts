@@ -1,5 +1,5 @@
-import fetch from "node-fetch";
-import { JSDOM } from "jsdom";
+// import fetch from "node-fetch";
+// import { JSDOM } from "jsdom";
 // (async () => {
 //   const response = await fetch(
 //     "https://cloud.google.com/bigquery/docs/reference/standard-sql/functions-and-operators"
@@ -16,4 +16,6 @@ import { JSDOM } from "jsdom";
 //     .map((section) => section.querySelector("lang-sql"));
 //   console.log(codes[0]);
 // })();
-let el: HTMLButtonElement = new HTMLButtonElement();
+//let el: HTMLButtonElement = new HTMLButtonElement();
+
+console.log("Hello");
